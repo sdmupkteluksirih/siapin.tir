@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+html, body {
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  touch-action: pan-y pinch-zoom;
+  -webkit-overflow-scrolling: touch;
+  box-sizing: border-box;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+#root {
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+@media print {
+  body {
+    background-color: white !important;
+    color: black !important;
+  }
+
+  header, 
+  nav, 
+  button, 
+  .no-print {
+    display: none !important;
+  }
+
+  @page {
+    size: A4;
+    margin: 1.5cm;
+  }
+}
+

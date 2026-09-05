@@ -1,0 +1,6 @@
+{
+  "name": "SI APIN - PLTU Teluk Sirih",
+  "description": "Sistem Terpadu Pemesanan Ruang Meeting dan Konsumsi PT PLN Indonesia Power UBP Teluk Sirih",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
