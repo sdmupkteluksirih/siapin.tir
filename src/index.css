@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 html, body {
-  overflow-x: hidden;
+  overflow-x: clip;
   width: 100%;
   max-width: 100%;
   margin: 0;
@@ -16,7 +16,7 @@ html, body {
 }
 
 #root {
-  overflow-x: hidden;
+  overflow-x: clip;
   width: 100%;
   max-width: 100%;
   min-height: 100vh;
