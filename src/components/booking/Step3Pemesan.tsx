@@ -24,7 +24,8 @@ import {
   Sparkles,
   HelpCircle,
   X,
-  Send
+  Send,
+  AlertCircle
 } from 'lucide-react';
 
 interface Step3PemesanProps {
@@ -64,6 +65,7 @@ export const Step3Pemesan: React.FC<Step3PemesanProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [isAgreed, setIsAgreed] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const endTime = calculateEndTime(formData.startTime, formData.durationHours);
@@ -136,7 +138,9 @@ export const Step3Pemesan: React.FC<Step3PemesanProps> = ({
   };
 
   const handleFinalSubmit = () => {
+    if (!isAgreed) return;
     setShowConfirmModal(false);
+    setIsAgreed(false);
     onConfirm();
   };
 
@@ -420,7 +424,10 @@ export const Step3Pemesan: React.FC<Step3PemesanProps> = ({
         <button
           type="button"
           id="btn-step3-submit"
-          onClick={() => setShowConfirmModal(true)}
+          onClick={() => {
+            setIsAgreed(false);
+            setShowConfirmModal(true);
+          }}
           disabled={!isFormValid || isSubmitting}
           className={`flex items-center gap-2 px-7 py-3.5 rounded-xl font-bold text-sm shadow-md transition-all ${
             isFormValid && !isSubmitting
@@ -444,7 +451,10 @@ export const Step3Pemesan: React.FC<Step3PemesanProps> = ({
               </div>
               <button
                 type="button"
-                onClick={() => setShowConfirmModal(false)}
+                onClick={() => {
+                  setShowConfirmModal(false);
+                  setIsAgreed(false);
+                }}
                 className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition"
               >
                 <X className="w-5 h-5" />
@@ -461,22 +471,54 @@ export const Step3Pemesan: React.FC<Step3PemesanProps> = ({
               <div>👥 <strong>{formData.participantCount} Peserta</strong> ({formData.snackRingan !== 'Tidak Ada' ? formData.snackRingan : formData.snackBerat !== 'Tidak Ada' ? formData.snackBerat : 'Tanpa Snack'} {formData.makanSiang === 'Iya' ? '+ Makan Siang' : ''})</div>
             </div>
 
+            {/* Keterangan & Checklist Persetujuan Peninjauan Admin */}
+            <div className="p-3.5 bg-amber-50/90 rounded-xl border border-amber-200/90 text-amber-950 space-y-2.5">
+              <div className="flex items-start gap-2.5 text-xs sm:text-sm leading-relaxed font-medium text-amber-900">
+                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <span>Permohonan ruangan dan konsumsi akan ditinjau dan dievaluasi kembali oleh admin</span>
+              </div>
+              <label 
+                htmlFor="checkbox-paham-evaluasi"
+                className="flex items-center gap-2.5 pt-2 border-t border-amber-200/70 cursor-pointer select-none group"
+              >
+                <input
+                  type="checkbox"
+                  id="checkbox-paham-evaluasi"
+                  checked={isAgreed}
+                  onChange={(e) => setIsAgreed(e.target.checked)}
+                  className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-amber-400 cursor-pointer accent-emerald-600"
+                />
+                <span className="text-xs sm:text-sm font-semibold text-amber-950 group-hover:text-amber-900 transition-colors">
+                  ya, mengerti
+                </span>
+              </label>
+            </div>
+
             <div className="flex items-center justify-end gap-3 pt-2">
               <button
                 type="button"
-                onClick={() => setShowConfirmModal(false)}
+                id="btn-confirm-cancel"
+                onClick={() => {
+                  setShowConfirmModal(false);
+                  setIsAgreed(false);
+                }}
                 className="px-4 py-2.5 rounded-xl border border-slate-200 font-semibold text-xs text-slate-700 hover:bg-slate-50 transition cursor-pointer"
               >
                 Cek Lagi
               </button>
               <button
                 type="button"
+                id="btn-confirm-submit"
                 onClick={handleFinalSubmit}
-                disabled={isSubmitting}
-                className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition cursor-pointer flex items-center gap-1.5"
+                disabled={!isAgreed || isSubmitting}
+                className={`px-5 py-2.5 rounded-xl font-bold text-xs shadow-sm transition flex items-center gap-1.5 ${
+                  isAgreed && !isSubmitting
+                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer ring-2 ring-emerald-500/20'
+                    : 'bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300/50 shadow-none'
+                }`}
               >
                 <CheckCircle2 className="w-4 h-4" />
-                <span>{isSubmitting ? 'Memproses...' : 'Ya, Kirim Sekarang'}</span>
+                <span>{isSubmitting ? 'Memproses...' : 'Ya, kirim sekarang'}</span>
               </button>
             </div>
           </div>
