@@ -77,9 +77,9 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
               </span>
               <div className="font-black text-white text-base sm:text-lg tracking-tight">
                 {currentTab === 'dashboard' && 'Dashboard Operasional'}
-                {currentTab === 'booking' && 'Manajemen Booking Meeting'}
+                {currentTab === 'booking' && 'Manajemen Booking'}
                 {currentTab === 'kalender' && 'Kalender Ruangan'}
-                {currentTab === 'rekap' && 'Rekapitulasi Konsumsi Harian'}
+                {currentTab === 'rekap' && 'Rekapitulasi Konsumsi'}
                 {currentTab === 'pengaturan' && 'Pengaturan & Master Data'}
               </div>
             </div>
