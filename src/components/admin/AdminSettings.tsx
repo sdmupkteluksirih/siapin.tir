@@ -303,10 +303,10 @@ export const AdminSettings: React.FC = () => {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
           {[
-            { name: 'War room lt. 3', floor: 'Lt. 3', cap: '30 Orang', desc: 'Layar Monitoring, Konferensi Terintegrasi' },
-            { name: 'Ruang integritas lt. 2', floor: 'Lt. 2', cap: '40 Orang', desc: 'Proyektor Laser, Audio Conference' },
-            { name: 'Room meeting KU lt. 1', floor: 'Lt. 1', cap: '25 Orang', desc: 'Smart Display, Meja Rapat Fleksibel' },
-            { name: 'Room meeting Har', floor: 'Gedung Har', cap: '20 Orang', desc: 'Whiteboard, Fasilitas Rapat Teknis' },
+            { name: 'War room lt. 3', floor: 'Lt. 3', cap: '35 Orang', desc: 'Layar Monitoring, Konferensi Terintegrasi, Dispenser, Stage dan Mimbar' },
+            { name: 'Ruang integritas lt. 2', floor: 'Lt. 2', cap: '10 Orang', desc: 'Smart Display, Meja Rapat, Whiteboard, Dispenser' },
+            { name: 'Room meeting KU lt. 1', floor: 'Lt. 1', cap: '15 Orang', desc: 'Smart Display, Meja Rapat, Whiteboard, Dispenser' },
+            { name: 'Room meeting Har', floor: 'Gedung Har', cap: '25 Orang', desc: 'Smart Display, Meja Rapat, Whiteboard, Dispenser' },
             { name: 'Tidak menggunakan ruang meeting', floor: 'Non-Ruangan', cap: 'Fleksibel', desc: 'Hanya pemesanan konsumsi / Rapat di area unit luar / Hybrid' }
           ].map((room, i) => (
             <div key={i} className="p-3 rounded-xl border border-slate-200 bg-slate-50/50 flex justify-between items-start">

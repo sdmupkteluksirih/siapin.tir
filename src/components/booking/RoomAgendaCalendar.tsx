@@ -54,37 +54,37 @@ export const PHYSICAL_ROOMS = [
     id: 'war-room',
     name: 'War room lt. 3',
     location: 'Gedung Administrasi Lt. 3',
-    capacity: '20 - 30 Orang',
+    capacity: '35 Orang',
     badgeColor: 'indigo',
     colorHex: '#4f46e5',
-    facilities: 'Proyektor HDMI, Video Conference, AC, Sound System'
+    facilities: 'Layar Monitoring, Konferensi Terintegrasi, Dispenser, Stage dan Mimbar'
   },
   {
     id: 'ruang-integritas',
     name: 'Ruang integritas lt. 2',
     location: 'Gedung Administrasi Lt. 2',
-    capacity: '30 - 45 Orang',
+    capacity: '10 Orang',
     badgeColor: 'sky',
     colorHex: '#0284c7',
-    facilities: 'Smart TV, Proyektor, Microfon Wireless, AC'
+    facilities: 'Smart Display, Meja Rapat, Whiteboard, Dispenser'
   },
   {
     id: 'room-ku',
     name: 'Room meeting KU lt. 1',
     location: 'Gedung Keuangan & Umum Lt. 1',
-    capacity: '25 - 35 Orang',
+    capacity: '15 Orang',
     badgeColor: 'emerald',
     colorHex: '#059669',
-    facilities: 'Proyektor, Sound System, AC, Meja Konferensi'
+    facilities: 'Smart Display, Meja Rapat, Whiteboard, Dispenser'
   },
   {
     id: 'room-har',
     name: 'Room meeting Har',
     location: 'Gedung Pemeliharaan (HAR)',
-    capacity: '35 - 50 Orang',
+    capacity: '25 Orang',
     badgeColor: 'amber',
     colorHex: '#d97706',
-    facilities: 'Layar Proyektor Lebar, Microfon, AC, Flipchart'
+    facilities: 'Smart Display, Meja Rapat, Whiteboard, Dispenser'
   }
 ];
 
