@@ -84,7 +84,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const isAdmin = currentUser?.role === 'ADMIN' || currentUser?.username === 'admin';
 
   return (
-    <header className="sticky top-0 z-40 bg-slate-950/95 backdrop-blur-md border-b border-slate-800/80 shadow-md w-full max-w-full">
+    <header className="fixed top-0 left-0 right-0 z-40 bg-slate-950/95 backdrop-blur-md border-b border-slate-800/80 shadow-md w-full">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 w-full">
         <div className="flex items-center justify-between h-16 sm:h-20 py-2 gap-2 w-full">
           {/* SI APIN Application Logo (Dark Elegant Theme) */}

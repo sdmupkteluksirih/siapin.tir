@@ -205,7 +205,7 @@ export default function App() {
         )}
 
         {currentView === 'booking' && (
-          <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 flex-1 w-full max-w-full overflow-x-clip sm:overflow-x-visible">
+          <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 pt-20 sm:pt-24 flex-1 w-full max-w-full overflow-x-clip sm:overflow-x-visible">
             <BookingWizard
               currentUser={currentUser}
               onCheckStatus={handleNavigateToSearch}
@@ -218,7 +218,7 @@ export default function App() {
         )}
 
         {currentView === 'search' && (
-          <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 flex-1 w-full max-w-full overflow-x-clip sm:overflow-x-visible">
+          <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 pt-20 sm:pt-24 flex-1 w-full max-w-full overflow-x-clip sm:overflow-x-visible">
             <SearchBooking
               initialSearchQuery={searchTargetNumber}
               onNewBooking={() => handleNavigate('booking')}

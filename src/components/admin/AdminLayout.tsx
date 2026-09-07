@@ -47,8 +47,8 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
   const pendingCount = bookings.filter(b => b.status === 'BOOKED').length;
 
   return (
-    <div className="min-h-screen bg-slate-100/70 flex flex-col lg:flex-row text-slate-800">
-      {/* Sidebar (Desktop + Mobile Drawer) */}
+    <div className="min-h-screen bg-slate-100/70 text-slate-800">
+      {/* Sidebar (Desktop + Mobile Drawer) - Fixed & Stationary */}
       <AdminSidebar
         currentTab={currentTab}
         onSelectTab={setCurrentTab}
@@ -57,10 +57,10 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
         onCloseMobile={() => setIsMobileSidebarOpen(false)}
       />
 
-      {/* Main Admin Area */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Top Header bar for mobile / desktop - Dark Elegant & Fixed/Sticky */}
-        <header className="sticky top-0 z-30 bg-slate-950/95 backdrop-blur-md border-b border-slate-800 px-4 sm:px-8 py-3.5 flex items-center justify-between shadow-md text-white">
+      {/* Main Admin Content Wrapper with left padding for desktop sidebar and top padding for fixed header */}
+      <div className="lg:pl-64 pt-16 sm:pt-20 min-h-screen flex flex-col">
+        {/* Top Header bar for mobile / desktop - Dark Elegant & Permanently Fixed */}
+        <header className="fixed top-0 left-0 lg:left-64 right-0 z-30 h-16 sm:h-20 bg-slate-950/95 backdrop-blur-md border-b border-slate-800 px-4 sm:px-8 flex items-center justify-between shadow-md text-white">
           <div className="flex items-center gap-3">
             <button
               type="button"

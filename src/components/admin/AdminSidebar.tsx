@@ -47,10 +47,10 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
         />
       )}
 
-      {/* Sidebar Container - Fixed/Sticky on desktop and mobile drawer */}
+      {/* Sidebar Container - Permanently Fixed on desktop & animated drawer on mobile */}
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-50 w-64 bg-slate-900 text-white flex flex-col justify-between transition-transform duration-300 overflow-y-auto lg:translate-x-0 lg:sticky lg:top-0 lg:h-screen lg:shrink-0 lg:self-start lg:z-30 ${
-          isOpenMobile ? 'translate-x-0' : '-translate-x-full'
+        className={`fixed top-0 bottom-0 left-0 z-40 w-64 bg-slate-900 text-white flex flex-col justify-between transition-transform duration-300 overflow-y-auto ${
+          isOpenMobile ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >
         <div>
