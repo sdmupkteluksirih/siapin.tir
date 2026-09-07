@@ -16,7 +16,6 @@ import {
   Utensils, 
   FileSpreadsheet,
   CheckCircle2,
-  FileText,
   AlertCircle
 } from 'lucide-react';
 
@@ -53,13 +52,6 @@ export const RekapKonsumsi: React.FC<RekapKonsumsiProps> = ({
 
   const handlePrintRekap = () => {
     setPrintMode('rekap');
-    setTimeout(() => {
-      window.print();
-    }, 100);
-  };
-
-  const handlePrintDetail = () => {
-    setPrintMode('detail');
     setTimeout(() => {
       window.print();
     }, 100);
@@ -144,7 +136,7 @@ export const RekapKonsumsi: React.FC<RekapKonsumsiProps> = ({
             </span>
           </div>
 
-          {/* Action Buttons (Prompt 3 requirement: Cetak Rekap, Cetak Detail Meeting, Export) */}
+          {/* Action Buttons: Cetak Rekap & Export CSV */}
           <div className="flex items-center gap-2 flex-wrap">
             <button
               type="button"
@@ -154,16 +146,6 @@ export const RekapKonsumsi: React.FC<RekapKonsumsiProps> = ({
             >
               <Printer className="w-4 h-4 text-indigo-600" />
               <span>Cetak Rekap</span>
-            </button>
-
-            <button
-              type="button"
-              id="btn-cetak-detail"
-              onClick={handlePrintDetail}
-              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-bold text-slate-800 shadow-2xs transition-colors cursor-pointer"
-            >
-              <FileText className="w-4 h-4 text-slate-700" />
-              <span>Cetak Detail Meeting</span>
             </button>
 
             <button
