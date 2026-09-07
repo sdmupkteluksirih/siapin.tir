@@ -84,17 +84,17 @@ export const Navbar: React.FC<NavbarProps> = ({
   const isAdmin = currentUser?.role === 'ADMIN' || currentUser?.username === 'admin';
 
   return (
-    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-2xs w-full max-w-full">
+    <header className="sticky top-0 z-40 bg-slate-950/95 backdrop-blur-md border-b border-slate-800/80 shadow-md w-full max-w-full">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 w-full">
         <div className="flex items-center justify-between h-16 sm:h-20 py-2 gap-2 w-full">
-          {/* SI APIN Application Logo */}
+          {/* SI APIN Application Logo (Dark Elegant Theme) */}
           <div 
             id="brand-logo-btn"
             onClick={() => onNavigate('booking')}
             className="flex items-center cursor-pointer group select-none py-1 min-w-0 shrink max-w-[calc(100vw-65px)] sm:max-w-none overflow-hidden"
             title="SI APIN - Sistem Terpadu Pemesanan Ruang Meeting dan Konsumsi"
           >
-            <SiApinLogo size="md" />
+            <SiApinLogo size="md" variant="dark" />
           </div>
 
           {/* Top-Right Hamburger Menu Container */}
@@ -102,16 +102,16 @@ export const Navbar: React.FC<NavbarProps> = ({
             <div className="flex items-center gap-2 sm:gap-3">
               {/* Optional user badge indicator */}
               {currentUser && (
-                <div className="hidden sm:flex items-center gap-2 pl-3 border-l border-slate-200 text-right select-none">
+                <div className="hidden sm:flex items-center gap-2 pl-3 border-l border-slate-800 text-right select-none">
                   <div className="flex flex-col">
-                    <span className="text-xs font-bold text-slate-900 leading-tight">
+                    <span className="text-xs font-bold text-slate-100 leading-tight">
                       {currentUser.name}
                     </span>
-                    <span className="text-[10px] text-slate-500 font-medium">
+                    <span className="text-[10px] text-slate-400 font-medium">
                       Bagian {currentUser.department}
                     </span>
                   </div>
-                  <div className="w-8 h-8 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-xl bg-slate-800/90 border border-slate-700 text-cyan-300 font-bold text-xs flex items-center justify-center shadow-xs">
                     {currentUser.avatarText || currentUser.department.substring(0, 2).toUpperCase()}
                   </div>
                 </div>
@@ -126,8 +126,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                 aria-label="Buka Menu Utama"
                 className={`p-2.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-center shrink-0 ${
                   isMenuOpen
-                    ? 'bg-slate-900 text-white border-slate-900 shadow-md ring-2 ring-slate-900/20'
-                    : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700 hover:text-slate-900 shadow-2xs'
+                    ? 'bg-cyan-500 text-slate-950 border-cyan-400 shadow-md ring-2 ring-cyan-400/20'
+                    : 'bg-slate-900/90 hover:bg-slate-800 border-slate-700/80 text-slate-200 hover:text-white shadow-2xs'
                 }`}
                 title="Menu Utama"
               >

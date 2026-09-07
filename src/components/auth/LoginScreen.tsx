@@ -63,23 +63,35 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         {/* Brand Header: PLN Logo on Top + Si APIN Logo */}
         <div className="text-center mb-6 sm:mb-8 flex flex-col items-center w-full">
           <div className="flex flex-col items-center justify-center w-full max-w-md px-2 py-1 mb-2">
-            {/* 1. Logo Paling Atas: PLN (Ukuran Kecil Proporsional) */}
+            {/* 1. Logo Paling Atas: PLN (PLN Putih.png) */}
             <div className="flex items-center justify-center -mb-0.5 z-10">
               <img
-                src="/login-pln-logo.png"
+                src="/PLN Putih.png"
                 alt="PT PLN Indonesia Power"
                 className="h-8 sm:h-9 md:h-10 w-auto object-contain drop-shadow-[0_3px_10px_rgba(0,0,0,0.5)] transition-transform duration-200 hover:scale-105"
                 loading="eager"
+                onError={(e) => {
+                  const target = e.currentTarget;
+                  if (!target.src.includes('pln-putih.png')) {
+                    target.src = '/pln-putih.png';
+                  }
+                }}
               />
             </div>
 
-            {/* 2. Logo Dibawahnya: Si APIN */}
+            {/* 2. Logo Dibawahnya: Si APIN (Propper Logo SiApin.png) */}
             <div className="flex items-center justify-center w-full z-10">
               <img
-                src="/login-header-logo.png"
+                src="/Propper Logo SiApin.png"
                 alt="SI APIN - Sistem Terpadu Pemesanan Ruang Meeting dan Konsumsi"
                 className="w-full max-w-[360px] sm:max-w-[420px] h-auto object-contain drop-shadow-[0_10px_25px_rgba(0,0,0,0.45)] transition-transform duration-200 hover:scale-[1.02]"
                 loading="eager"
+                onError={(e) => {
+                  const target = e.currentTarget;
+                  if (!target.src.includes('propper-logo-siapin.png')) {
+                    target.src = '/propper-logo-siapin.png';
+                  }
+                }}
               />
             </div>
           </div>
