@@ -347,7 +347,8 @@ export const AdminSettings: React.FC = () => {
             'Keuangan & Umum',
             'K3 & Keamanan',
             'Lingkungan',
-            'Pengadaan'
+            'Pengadaan',
+            'Sistem Manajemen Terintegrasi'
           ].map((dept, i) => (
             <div key={i} className="p-2.5 rounded-xl border border-slate-200 bg-slate-50/50 font-semibold text-slate-800 flex items-center gap-2">
               <span className="w-5 h-5 rounded-md bg-indigo-100 text-indigo-700 text-[10px] font-bold flex items-center justify-center shrink-0">

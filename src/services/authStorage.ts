@@ -105,21 +105,128 @@ export const DEFAULT_USERS: UserAccount[] = [
     avatarText: 'PG',
     lastLogin: '2026-08-19T15:10:00.000Z',
     createdAt: '2026-01-01T00:00:00.000Z'
+  },
+  {
+    id: 'usr-smt',
+    username: 'sm_terintegrasi',
+    name: 'PIC Sistem Manajemen Terintegrasi',
+    role: 'USER',
+    department: 'Sistem Manajemen Terintegrasi',
+    password: 'user123',
+    avatarText: 'SM',
+    lastLogin: '2026-08-20T09:00:00.000Z',
+    createdAt: '2026-01-01T00:00:00.000Z'
   }
 ];
+
+// BroadcastChannel for instant cross-tab auth communication
+const authBroadcast = typeof window !== 'undefined' && 'BroadcastChannel' in window
+  ? new BroadcastChannel('siapin_auth_sync_channel')
+  : null;
+
+let cachedUsers: UserAccount[] | null = null;
+let isAuthSyncInitialized = false;
 
 function notifyAuthSubscribers() {
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new Event(AUTH_LISTEN_EVENT));
+    try {
+      authBroadcast?.postMessage({ type: 'AUTH_USERS_CHANGED', timestamp: Date.now() });
+    } catch {
+      // Ignore
+    }
   }
+}
+
+async function fetchUsersFromServer() {
+  if (typeof window === 'undefined') return;
+  try {
+    const res = await fetch('/api/users');
+    if (!res.ok) return;
+    const serverUsers: UserAccount[] = await res.json();
+    if (!Array.isArray(serverUsers)) return;
+
+    const currentStr = JSON.stringify(cachedUsers || []);
+    const serverStr = JSON.stringify(serverUsers);
+
+    if (currentStr !== serverStr) {
+      cachedUsers = serverUsers;
+      try {
+        localStorage.setItem(USERS_STORAGE_KEY, serverStr);
+      } catch {
+        // Ignore
+      }
+      notifyAuthSubscribers();
+    }
+  } catch {
+    // Ignore network error
+  }
+}
+
+function syncUsersToServer(users: UserAccount[]) {
+  if (typeof window === 'undefined') return;
+  fetch('/api/users/sync', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ users })
+  }).catch(() => {});
+}
+
+function setupAuthRealtimeSync() {
+  if (typeof window === 'undefined' || isAuthSyncInitialized) return;
+  isAuthSyncInitialized = true;
+
+  fetchUsersFromServer();
+
+  if (authBroadcast) {
+    authBroadcast.onmessage = (event) => {
+      if (event.data?.type === 'AUTH_USERS_CHANGED') {
+        const stored = localStorage.getItem(USERS_STORAGE_KEY);
+        if (stored) {
+          try {
+            cachedUsers = JSON.parse(stored);
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new Event(AUTH_LISTEN_EVENT));
+            }
+          } catch {
+            fetchUsersFromServer();
+          }
+        } else {
+          fetchUsersFromServer();
+        }
+      }
+    };
+  }
+
+  window.addEventListener('storage', (e) => {
+    if (e.key === USERS_STORAGE_KEY && e.newValue) {
+      try {
+        cachedUsers = JSON.parse(e.newValue);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event(AUTH_LISTEN_EVENT));
+        }
+      } catch {
+        fetchUsersFromServer();
+      }
+    }
+  });
+}
+
+if (typeof window !== 'undefined') {
+  setupAuthRealtimeSync();
 }
 
 export const authStorage = {
   getAllUsers(): UserAccount[] {
     if (typeof window === 'undefined') return DEFAULT_USERS;
+    if (cachedUsers && Array.isArray(cachedUsers)) {
+      return cachedUsers;
+    }
+
     const stored = localStorage.getItem(USERS_STORAGE_KEY);
     if (!stored) {
       localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(DEFAULT_USERS));
+      cachedUsers = DEFAULT_USERS;
       return DEFAULT_USERS;
     }
     try {
@@ -145,9 +252,11 @@ export const authStorage = {
       if (needsSave) {
         localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(combined));
       }
+      cachedUsers = combined;
       return combined;
     } catch {
       localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(DEFAULT_USERS));
+      cachedUsers = DEFAULT_USERS;
       return DEFAULT_USERS;
     }
   },
@@ -219,6 +328,7 @@ export const authStorage = {
     });
 
     if (found) {
+      cachedUsers = updated;
       localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(updated));
       // If the current logged in user was reset, update their session too
       const current = this.getCurrentUser();
@@ -227,6 +337,7 @@ export const authStorage = {
         localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(updatedCurrent));
       }
       notifyAuthSubscribers();
+      syncUsersToServer(updated);
       return true;
     }
     return false;
@@ -247,6 +358,7 @@ export const authStorage = {
     });
 
     if (found) {
+      cachedUsers = updated;
       localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(updated));
       const current = this.getCurrentUser();
       if (current && (current.id === userId || current.username.toLowerCase() === userId.toLowerCase())) {
@@ -254,6 +366,7 @@ export const authStorage = {
         localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(updatedCurrent));
       }
       notifyAuthSubscribers();
+      syncUsersToServer(updated);
       return true;
     }
     return false;
@@ -275,6 +388,7 @@ export const authStorage = {
     });
 
     if (found) {
+      cachedUsers = updated;
       localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(updated));
       const current = this.getCurrentUser();
       if (current && (current.id === userId || current.username.toLowerCase() === userId.toLowerCase())) {
@@ -282,6 +396,7 @@ export const authStorage = {
         localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(updatedCurrent));
       }
       notifyAuthSubscribers();
+      syncUsersToServer(updated);
       return true;
     }
     return false;
@@ -296,8 +411,10 @@ export const authStorage = {
       avatarText: userData.name ? userData.name.substring(0, 2).toUpperCase() : 'US'
     };
     users.push(newUser);
+    cachedUsers = users;
     localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
     notifyAuthSubscribers();
+    syncUsersToServer(users);
     return newUser;
   },
 
@@ -309,14 +426,18 @@ export const authStorage = {
       return false;
     }
     const filtered = users.filter(u => u.id !== userId);
+    cachedUsers = filtered;
     localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(filtered));
     notifyAuthSubscribers();
+    syncUsersToServer(filtered);
     return true;
   },
 
   resetToDefault(): void {
+    cachedUsers = DEFAULT_USERS;
     localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(DEFAULT_USERS));
     notifyAuthSubscribers();
+    syncUsersToServer(DEFAULT_USERS);
   },
 
   subscribe(callback: () => void) {

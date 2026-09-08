@@ -672,7 +672,8 @@ export const UserManagement: React.FC = () => {
                       'Keuangan & Umum',
                       'K3 & Keamanan',
                       'Lingkungan',
-                      'Pengadaan'
+                      'Pengadaan',
+                      'Sistem Manajemen Terintegrasi'
                     ].map(d => (
                       <option key={d} value={d}>{d}</option>
                     ))}
@@ -778,7 +779,8 @@ export const UserManagement: React.FC = () => {
                     'Keuangan & Umum',
                     'K3 & Keamanan',
                     'Lingkungan',
-                    'Pengadaan'
+                    'Pengadaan',
+                    'Sistem Manajemen Terintegrasi'
                   ].map(d => (
                     <option key={d} value={d}>{d}</option>
                   ))}

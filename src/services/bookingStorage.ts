@@ -487,18 +487,188 @@ const INITIAL_BOOKINGS: Booking[] = [
   }
 ];
 
+// BroadcastChannel for instant zero-latency cross-tab communication
+const broadcastChannel = typeof window !== 'undefined' && 'BroadcastChannel' in window 
+  ? new BroadcastChannel('siapin_booking_sync_channel') 
+  : null;
+
+// In-memory cache for ultra-fast synchronous UI rendering
+let cachedBookings: Booking[] | null = null;
+let isInitialized = false;
+
 function notifySubscribers() {
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new Event(LISTEN_EVENT));
+    try {
+      broadcastChannel?.postMessage({ type: 'BOOKINGS_CHANGED', timestamp: Date.now() });
+    } catch {
+      // Ignore broadcast errors
+    }
   }
+}
+
+// Fetch all bookings from the central Express API and update local cache non-destructively
+async function fetchBookingsFromServer(initialSync: boolean = false) {
+  if (typeof window === 'undefined') return;
+  try {
+    const res = await fetch('/api/bookings');
+    if (!res.ok) return;
+    const serverBookings: Booking[] = await res.json();
+    if (!Array.isArray(serverBookings)) return;
+
+    // 1. Gather all local bookings currently available (cache or localStorage)
+    let localItems: Booking[] = cachedBookings || [];
+    if (localItems.length === 0) {
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) localItems = parsed;
+        }
+      } catch {
+        // Ignore JSON error
+      }
+    }
+
+    // 2. Identify any local-only bookings (e.g. submitted while offline or before sync)
+    const serverIds = new Set(serverBookings.map(b => b.id));
+    const localOnly = localItems.filter(b => !serverIds.has(b.id));
+
+    // 3. If there are local-only bookings, securely push them to the server immediately
+    if (localOnly.length > 0) {
+      fetch('/api/bookings/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookings: localOnly })
+      }).catch(() => {});
+    }
+
+    // 4. Non-destructive merge: union of server bookings and local bookings
+    const mergedMap = new Map<string, Booking>();
+    
+    // Server bookings first
+    serverBookings.forEach(b => mergedMap.set(b.id, b));
+    
+    // Always preserve local-only submitted bookings
+    localOnly.forEach(b => mergedMap.set(b.id, b));
+
+    // For overlapping bookings, keep the newest version or locally approved version
+    localItems.forEach(localB => {
+      const serverB = mergedMap.get(localB.id);
+      if (serverB) {
+        const localTime = new Date((localB as any).updatedAt || localB.createdAt || 0).getTime();
+        const serverTime = new Date((serverB as any).updatedAt || serverB.createdAt || 0).getTime();
+        if (localTime > serverTime) {
+          mergedMap.set(localB.id, localB);
+        }
+      }
+    });
+
+    const finalBookings = Array.from(mergedMap.values());
+    const currentStr = JSON.stringify(cachedBookings || []);
+    const finalStr = JSON.stringify(finalBookings);
+
+    if (currentStr !== finalStr) {
+      cachedBookings = finalBookings;
+      try {
+        localStorage.setItem(STORAGE_KEY, finalStr);
+      } catch {
+        // Ignore localStorage quota errors
+      }
+      notifySubscribers();
+    }
+  } catch (err) {
+    // Silent fail in offline or fallback to cache without ever deleting local data
+  }
+}
+
+// Setup real-time listeners: SSE, BroadcastChannel, and interval polling
+function setupRealtimeSync() {
+  if (typeof window === 'undefined' || isInitialized) return;
+  isInitialized = true;
+
+  // 1. Initial server fetch & sync
+  fetchBookingsFromServer(true);
+
+  // 2. Setup Server-Sent Events (SSE) for instant push across all devices/accounts
+  try {
+    const eventSource = new EventSource('/api/events');
+    eventSource.onmessage = (event) => {
+      try {
+        const payload = JSON.parse(event.data);
+        if (payload.type === 'bookings_changed' || payload.type === 'connected') {
+          fetchBookingsFromServer(false);
+        }
+      } catch {
+        fetchBookingsFromServer(false);
+      }
+    };
+    eventSource.onerror = () => {
+      // EventSource auto-reconnects
+    };
+  } catch {
+    // SSE not supported or blocked
+  }
+
+  // 3. Fallback periodic polling every 2.5 seconds to guarantee interlock consistency
+  setInterval(() => {
+    fetchBookingsFromServer(false);
+  }, 2500);
+
+  // 4. Cross-tab BroadcastChannel listener
+  if (broadcastChannel) {
+    broadcastChannel.onmessage = (event) => {
+      if (event.data?.type === 'BOOKINGS_CHANGED') {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          try {
+            cachedBookings = JSON.parse(stored);
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new Event(LISTEN_EVENT));
+            }
+          } catch {
+            fetchBookingsFromServer(false);
+          }
+        } else {
+          fetchBookingsFromServer(false);
+        }
+      }
+    };
+  }
+
+  // 5. Cross-tab StorageEvent listener
+  window.addEventListener('storage', (e) => {
+    if (e.key === STORAGE_KEY && e.newValue) {
+      try {
+        cachedBookings = JSON.parse(e.newValue);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event(LISTEN_EVENT));
+        }
+      } catch {
+        fetchBookingsFromServer(false);
+      }
+    }
+  });
+}
+
+// Auto-run realtime setup in browser
+if (typeof window !== 'undefined') {
+  setupRealtimeSync();
 }
 
 export const bookingStorage = {
   getAll(): Booking[] {
     if (typeof window === 'undefined') return INITIAL_BOOKINGS;
+
+    // Return cached bookings if already loaded
+    if (cachedBookings && Array.isArray(cachedBookings)) {
+      return cachedBookings;
+    }
+
     const stored = localStorage.getItem(STORAGE_KEY);
     if (!stored) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_BOOKINGS));
+      cachedBookings = INITIAL_BOOKINGS;
       return INITIAL_BOOKINGS;
     }
     try {
@@ -510,14 +680,18 @@ export const bookingStorage = {
         if (missingSeeds.length > 0) {
           const merged = [...parsed, ...missingSeeds];
           localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+          cachedBookings = merged;
           return merged;
         }
+        cachedBookings = parsed;
         return parsed;
       }
       localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_BOOKINGS));
+      cachedBookings = INITIAL_BOOKINGS;
       return INITIAL_BOOKINGS;
     } catch {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_BOOKINGS));
+      cachedBookings = INITIAL_BOOKINGS;
       return INITIAL_BOOKINGS;
     }
   },
@@ -567,15 +741,35 @@ export const bookingStorage = {
       meetingLocation: formData.meetingLocation.trim(),
       participantCount: Number(formData.participantCount) || 1,
       organizationOrGuests: formData.organizationOrGuests?.trim() || undefined,
-      invitationLetter: formData.invitationLetter || undefined,
+      invitationLetter: (formData.attachments && formData.attachments.length > 0) 
+        ? formData.attachments[0] 
+        : (formData.invitationLetter || undefined),
+      attachments: (formData.attachments && formData.attachments.length > 0)
+        ? formData.attachments
+        : (formData.invitationLetter ? [formData.invitationLetter] : undefined),
       notes: formData.notes ? formData.notes.trim() : undefined,
       status: 'BOOKED',
       createdAt: new Date().toISOString()
     };
 
     const updated = [newBooking, ...all];
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    cachedBookings = updated;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    } catch {
+      // Ignore quota errors
+    }
     notifySubscribers();
+
+    // Persist to central server asynchronously
+    fetch('/api/bookings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newBooking)
+    }).catch((err) => {
+      console.warn('[SI APIN] Gagal sync booking ke server:', err);
+    });
+
     return newBooking;
   },
 
@@ -597,8 +791,25 @@ export const bookingStorage = {
       return b;
     });
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    cachedBookings = updated;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    } catch {
+      // Ignore quota errors
+    }
     notifySubscribers();
+
+    if (updatedBooking) {
+      // Persist to central server asynchronously
+      fetch(`/api/bookings/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedBooking)
+      }).catch((err) => {
+        console.warn('[SI APIN] Gagal sync status ke server:', err);
+      });
+    }
+
     return updatedBooking;
   },
 
@@ -626,8 +837,25 @@ export const bookingStorage = {
       return b;
     });
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    cachedBookings = updated;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    } catch {
+      // Ignore quota errors
+    }
     notifySubscribers();
+
+    if (updatedBooking) {
+      // Persist to central server asynchronously
+      fetch(`/api/bookings/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedBooking)
+      }).catch((err) => {
+        console.warn('[SI APIN] Gagal sync edit persetujuan ke server:', err);
+      });
+    }
+
     return updatedBooking;
   },
 
@@ -651,8 +879,25 @@ export const bookingStorage = {
       return b;
     });
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    cachedBookings = updated;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    } catch {
+      // Ignore quota errors
+    }
     notifySubscribers();
+
+    if (updatedBooking) {
+      // Persist to central server asynchronously
+      fetch(`/api/bookings/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedBooking)
+      }).catch((err) => {
+        console.warn('[SI APIN] Gagal sync update ke server:', err);
+      });
+    }
+
     return updatedBooking;
   },
 
@@ -660,16 +905,45 @@ export const bookingStorage = {
     const all = this.getAll();
     const filtered = all.filter(b => b.id !== id);
     if (filtered.length !== all.length) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+      cachedBookings = filtered;
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+      } catch {
+        // Ignore quota errors
+      }
       notifySubscribers();
+
+      // Delete on central server asynchronously
+      fetch(`/api/bookings/${id}`, {
+        method: 'DELETE'
+      }).catch((err) => {
+        console.warn('[SI APIN] Gagal hapus di server:', err);
+      });
+
       return true;
     }
     return false;
   },
 
   reset(): void {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_BOOKINGS));
+    const all = this.getAll();
+    const seedIds = new Set(INITIAL_BOOKINGS.map(s => s.id));
+    const userSubmitted = all.filter(b => !seedIds.has(b.id));
+    const preserved = [...userSubmitted, ...INITIAL_BOOKINGS];
+    cachedBookings = preserved;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(preserved));
+    } catch {
+      // Ignore quota errors
+    }
     notifySubscribers();
+
+    // Reset on central server asynchronously while protecting submitted bookings
+    fetch('/api/bookings/reset', {
+      method: 'POST'
+    }).catch((err) => {
+      console.warn('[SI APIN] Gagal reset di server:', err);
+    });
   },
 
   /**

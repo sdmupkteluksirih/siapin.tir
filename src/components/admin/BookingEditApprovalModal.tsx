@@ -3,6 +3,7 @@ import { Booking, BookingStatus, SnackRingan, SnackBerat, MakanSiang } from '../
 import { bookingStorage } from '../../services/bookingStorage';
 import { authStorage } from '../../services/authStorage';
 import { calculateEndTime, formatDateIndo, formatDuration, isEligibleForMakanSiang } from '../../utils/timeUtils';
+import { getBookingAttachments, formatFileSize } from '../../utils/fileUtils';
 import { 
   X, 
   CheckCircle2, 
@@ -37,7 +38,8 @@ const DEPARTMENTS = [
   'Keuangan & Umum',
   'K3 & Keamanan',
   'Lingkungan',
-  'Pengadaan'
+  'Pengadaan',
+  'Sistem Manajemen Terintegrasi'
 ];
 
 const MEETING_ROOMS = [
@@ -477,26 +479,37 @@ export const BookingEditApprovalModal: React.FC<BookingEditApprovalModalProps> =
                 />
               </div>
 
-              {/* Surat Undangan / Izin jika ada */}
-              {booking.invitationLetter && (
-                <div className="p-3 bg-white rounded-xl border border-slate-200 flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-indigo-600" />
-                    <div>
-                      <span className="text-slate-500 block text-[11px]">Surat Undangan / Izin Terlampir:</span>
-                      <strong className="text-slate-800">{booking.invitationLetter.name}</strong>
-                    </div>
+              {/* File Pendukung / Surat Undangan Terlampir */}
+              {getBookingAttachments(booking).length > 0 && (
+                <div className="space-y-2 p-3 bg-white rounded-xl border border-slate-200 text-xs">
+                  <span className="text-slate-500 font-bold block text-[11px] uppercase tracking-wider">
+                    File Pendukung / Surat Undangan Terlampir ({getBookingAttachments(booking).length}):
+                  </span>
+                  <div className="space-y-1.5">
+                    {getBookingAttachments(booking).map((doc, idx) => (
+                      <div key={doc.id || idx} className="flex items-center justify-between p-2 rounded-lg bg-slate-50 border border-slate-200">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <FileText className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                          <span className="text-slate-800 font-semibold truncate max-w-[200px] sm:max-w-[300px]">
+                            {doc.name}
+                          </span>
+                          <span className="text-[10px] text-slate-400 shrink-0">
+                            ({formatFileSize(doc.size)})
+                          </span>
+                        </div>
+                        {doc.dataUrl && (
+                          <a
+                            href={doc.dataUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-md border border-indigo-200 text-[11px] shrink-0"
+                          >
+                            Buka File
+                          </a>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                  {booking.invitationLetter.dataUrl && (
-                    <a
-                      href={booking.invitationLetter.dataUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-3 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-lg border border-indigo-200"
-                    >
-                      Buka File
-                    </a>
-                  )}
                 </div>
               )}
 

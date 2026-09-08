@@ -55,6 +55,7 @@ export const BookingWizard: React.FC<BookingWizardProps> = ({
       participantCount: 20,
       organizationOrGuests: '',
       invitationLetter: null,
+      attachments: [],
       notes: ''
     };
   };

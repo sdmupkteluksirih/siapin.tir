@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Booking } from '../../types';
 import { formatDateIndo, formatDuration } from '../../utils/timeUtils';
+import { getBookingAttachments, formatFileSize } from '../../utils/fileUtils';
 import { StatusBadge } from '../common/StatusBadge';
 import { whatsappService, AdminContact } from '../../services/whatsappService';
 import { WhatsAppNotificationModal } from '../common/WhatsAppNotificationModal';
@@ -350,12 +351,33 @@ export const BookingSuccess: React.FC<BookingSuccessProps> = ({
                 <span className="text-slate-900 font-semibold block">{booking.organizationOrGuests}</span>
               </div>
             )}
-            {booking.invitationLetter && (
+            {getBookingAttachments(booking).length > 0 && (
               <div>
-                <span className="text-xs text-slate-400 block">Surat Undangan / Izin</span>
-                <span className="text-indigo-600 font-semibold block text-xs truncate">
-                  📎 {booking.invitationLetter.name}
+                <span className="text-xs text-slate-400 block">
+                  File Pendukung ({getBookingAttachments(booking).length})
                 </span>
+                <div className="space-y-1 mt-1">
+                  {getBookingAttachments(booking).map((doc, idx) => (
+                    <div key={doc.id || idx} className="flex items-center gap-1.5 text-xs text-indigo-700">
+                      <span>📎</span>
+                      {doc.dataUrl ? (
+                        <a 
+                          href={doc.dataUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="hover:underline font-medium truncate max-w-[200px]"
+                          title={doc.name}
+                        >
+                          {doc.name} ({formatFileSize(doc.size)})
+                        </a>
+                      ) : (
+                        <span className="font-medium truncate max-w-[200px]">
+                          {doc.name} ({formatFileSize(doc.size)})
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>

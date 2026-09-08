@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Booking, BookingStatus } from '../../types';
 import { bookingStorage } from '../../services/bookingStorage';
 import { formatDateIndo, formatDuration } from '../../utils/timeUtils';
+import { getBookingAttachments } from '../../utils/fileUtils';
 import { StatusBadge } from '../common/StatusBadge';
 import { BookingEditApprovalModal } from './BookingEditApprovalModal';
 import { WhatsAppNotificationModal } from '../common/WhatsAppNotificationModal';
@@ -241,9 +242,12 @@ export const BookingManagement: React.FC<BookingManagementProps> = ({
                             👥 {item.organizationOrGuests}
                           </span>
                         )}
-                        {item.invitationLetter && (
-                          <span className="text-[10px] bg-indigo-50 text-indigo-700 font-bold px-1.5 py-0.5 rounded border border-indigo-100" title={`Surat: ${item.invitationLetter.name}`}>
-                            📎 Surat Terlampir
+                        {getBookingAttachments(item).length > 0 && (
+                          <span
+                            className="text-[10px] bg-indigo-50 text-indigo-700 font-bold px-1.5 py-0.5 rounded border border-indigo-100"
+                            title={`File: ${getBookingAttachments(item).map(d => d.name).join(', ')}`}
+                          >
+                            📎 {getBookingAttachments(item).length > 1 ? `${getBookingAttachments(item).length} File` : 'Surat Terlampir'}
                           </span>
                         )}
                       </div>

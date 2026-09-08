@@ -3,6 +3,7 @@ import { Booking, BookingStatus } from '../../types';
 import { bookingStorage } from '../../services/bookingStorage';
 import { authStorage } from '../../services/authStorage';
 import { formatDateIndo, formatDuration } from '../../utils/timeUtils';
+import { getBookingAttachments, formatFileSize } from '../../utils/fileUtils';
 import { StatusBadge } from '../common/StatusBadge';
 import { BookingEditApprovalModal } from './BookingEditApprovalModal';
 import { WhatsAppNotificationModal } from '../common/WhatsAppNotificationModal';
@@ -274,25 +275,36 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
                 </div>
               )}
 
-              {booking.invitationLetter && (
-                <div className="pt-2 border-t border-slate-200 text-xs flex items-center justify-between">
-                  <div>
-                    <span className="text-slate-400 block">Surat Undangan / Izin Kegiatan:</span>
-                    <span className="text-indigo-700 font-semibold flex items-center gap-1 mt-0.5">
-                      <FileText className="w-3.5 h-3.5" />
-                      {booking.invitationLetter.name}
-                    </span>
+              {getBookingAttachments(booking).length > 0 && (
+                <div className="pt-2 border-t border-slate-200 text-xs space-y-2">
+                  <span className="text-slate-400 block">
+                    Dokumen / File Pendukung Terlampir ({getBookingAttachments(booking).length}):
+                  </span>
+                  <div className="space-y-1.5">
+                    {getBookingAttachments(booking).map((doc, idx) => (
+                      <div key={doc.id || idx} className="flex items-center justify-between p-2 rounded-lg bg-white border border-slate-200">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <FileText className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                          <span className="text-slate-800 font-semibold truncate max-w-[220px] sm:max-w-[320px]">
+                            {doc.name}
+                          </span>
+                          <span className="text-[10px] text-slate-400 shrink-0">
+                            ({formatFileSize(doc.size)})
+                          </span>
+                        </div>
+                        {doc.dataUrl && (
+                          <a
+                            href={doc.dataUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-md text-xs shadow-2xs transition-colors shrink-0"
+                          >
+                            Buka File
+                          </a>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                  {booking.invitationLetter.dataUrl && (
-                    <a
-                      href={booking.invitationLetter.dataUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-xs shadow-xs transition-colors"
-                    >
-                      Buka File Surat
-                    </a>
-                  )}
                 </div>
               )}
 

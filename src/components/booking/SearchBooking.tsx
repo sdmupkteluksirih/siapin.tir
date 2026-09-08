@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Booking } from '../../types';
 import { bookingStorage } from '../../services/bookingStorage';
 import { formatDateIndo, formatDuration } from '../../utils/timeUtils';
+import { getBookingAttachments, formatFileSize } from '../../utils/fileUtils';
 import { StatusBadge } from '../common/StatusBadge';
 import { WhatsAppNotificationModal } from '../common/WhatsAppNotificationModal';
 import { 
@@ -256,25 +257,36 @@ export const SearchBooking: React.FC<SearchBookingProps> = ({
                   </div>
                 )}
 
-                {selectedBooking.invitationLetter && (
-                  <div className="pt-2 border-t border-slate-100 text-xs flex items-center justify-between">
-                    <div>
-                      <span className="text-slate-400 block">Surat Undangan / Izin Eksternal:</span>
-                      <span className="text-indigo-600 font-semibold flex items-center gap-1 mt-0.5">
-                        <FileText className="w-3.5 h-3.5" />
-                        {selectedBooking.invitationLetter.name}
-                      </span>
+                {getBookingAttachments(selectedBooking).length > 0 && (
+                  <div className="pt-2 border-t border-slate-100 text-xs space-y-2">
+                    <span className="text-slate-400 block">
+                      Dokumen / File Pendukung Terlampir ({getBookingAttachments(selectedBooking).length}):
+                    </span>
+                    <div className="space-y-1.5">
+                      {getBookingAttachments(selectedBooking).map((doc, idx) => (
+                        <div key={doc.id || idx} className="flex items-center justify-between p-2 rounded-lg bg-slate-50 border border-slate-200/80">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <FileText className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                            <span className="text-slate-800 font-semibold truncate max-w-[220px] sm:max-w-[320px]">
+                              {doc.name}
+                            </span>
+                            <span className="text-[10px] text-slate-400 shrink-0">
+                              ({formatFileSize(doc.size)})
+                            </span>
+                          </div>
+                          {doc.dataUrl && (
+                            <a
+                              href={doc.dataUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-md border border-indigo-200 transition-colors shrink-0 text-[11px]"
+                            >
+                              Buka Dokumen
+                            </a>
+                          )}
+                        </div>
+                      ))}
                     </div>
-                    {selectedBooking.invitationLetter.dataUrl && (
-                      <a
-                        href={selectedBooking.invitationLetter.dataUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="px-3 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-lg border border-indigo-200 transition-colors"
-                      >
-                        Buka Dokumen
-                      </a>
-                    )}
                   </div>
                 )}
 

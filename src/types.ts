@@ -13,6 +13,7 @@ export type SnackBerat =
 export type MakanSiang = 'Iya' | 'Tidak';
 
 export interface AttachedDocument {
+  id?: string;
   name: string;
   size: number;
   type: string;
@@ -48,7 +49,8 @@ export interface Booking {
   meetingLocation: string;
   participantCount: number;
   organizationOrGuests?: string; // Nama Organisasi / Tamu yang hadir
-  invitationLetter?: AttachedDocument | null; // Surat Undangan / Izin dari eksternal
+  invitationLetter?: AttachedDocument | null; // Surat Undangan / Izin dari eksternal (legacy / file pertama)
+  attachments?: AttachedDocument[]; // Dokumen / File Pendukung (bisa lebih dari 1 file)
   notes?: string;
   approvalNotes?: string;
   approvedBy?: string;
@@ -73,6 +75,7 @@ export interface BookingFormData {
   participantCount: number;
   organizationOrGuests: string;
   invitationLetter: AttachedDocument | null;
+  attachments?: AttachedDocument[]; // Dokumen / File Pendukung (bisa lebih dari 1 file)
   notes: string;
 }
 

@@ -5,6 +5,7 @@ import {
   formatDateIndo, 
   formatDuration 
 } from '../../utils/timeUtils';
+import { formatFileSize, getBookingAttachments } from '../../utils/fileUtils';
 import { 
   User, 
   Building, 
@@ -25,7 +26,9 @@ import {
   HelpCircle,
   X,
   Send,
-  AlertCircle
+  AlertCircle,
+  Plus,
+  ExternalLink
 } from 'lucide-react';
 
 interface Step3PemesanProps {
@@ -44,16 +47,9 @@ const DEPARTMENTS = [
   'Keuangan & Umum',
   'K3 & Keamanan',
   'Lingkungan',
-  'Pengadaan'
+  'Pengadaan',
+  'Sistem Manajemen Terintegrasi'
 ];
-
-const formatFileSize = (bytes: number): string => {
-  if (!bytes || bytes === 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-};
 
 export const Step3Pemesan: React.FC<Step3PemesanProps> = ({
   formData,
@@ -78,33 +74,65 @@ export const Step3Pemesan: React.FC<Step3PemesanProps> = ({
     formData.participantCount > 0
   );
 
-  const handleProcessFile = (file: File) => {
+  const currentAttachments: AttachedDocument[] = getBookingAttachments(formData);
+  const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1 MB per file
+  const MAX_FILES = 5; // up to 5 files
+
+  const updateAttachments = (newList: AttachedDocument[]) => {
+    onChange('attachments', newList);
+    onChange('invitationLetter', newList[0] || null);
+  };
+
+  const handleProcessFiles = (files: FileList | File[]) => {
     setUploadError(null);
-    const MAX_SIZE = 1 * 1024 * 1024; // 1MB
-    if (file.size > MAX_SIZE) {
-      setUploadError('Ukuran file maksimal adalah 1 MB.');
+    const fileArray = Array.from(files);
+    if (fileArray.length === 0) return;
+
+    if (currentAttachments.length + fileArray.length > MAX_FILES) {
+      setUploadError(`Maksimal ${MAX_FILES} file pendukung yang dapat diunggah.`);
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      const attachedDoc: AttachedDocument = {
-        name: file.name,
-        size: file.size,
-        type: file.type || 'application/octet-stream',
-        dataUrl: reader.result as string
+    const oversized = fileArray.find(f => f.size > MAX_FILE_SIZE);
+    if (oversized) {
+      setUploadError(`File "${oversized.name}" melebihi batas 1 MB (${formatFileSize(oversized.size)}).`);
+      return;
+    }
+
+    let completed = 0;
+    const newDocs: AttachedDocument[] = [];
+
+    fileArray.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        newDocs.push({
+          id: `att-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+          name: file.name,
+          size: file.size,
+          type: file.type || 'application/octet-stream',
+          dataUrl: reader.result as string
+        });
+        completed += 1;
+        if (completed === fileArray.length) {
+          const updated = [...currentAttachments, ...newDocs];
+          updateAttachments(updated);
+        }
       };
-      onChange('invitationLetter', attachedDoc);
-    };
-    reader.onerror = () => {
-      setUploadError('Gagal membaca file. Silakan coba lagi.');
-    };
-    reader.readAsDataURL(file);
+      reader.onerror = () => {
+        setUploadError(`Gagal membaca file ${file.name}. Silakan coba lagi.`);
+        completed += 1;
+      };
+      reader.readAsDataURL(file);
+    });
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      handleProcessFile(e.target.files[0]);
+    if (e.target.files && e.target.files.length > 0) {
+      handleProcessFiles(e.target.files);
+    }
+    // reset input so the same file can be re-selected if needed
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
@@ -124,17 +152,20 @@ export const Step3Pemesan: React.FC<Step3PemesanProps> = ({
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleProcessFile(e.dataTransfer.files[0]);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleProcessFiles(e.dataTransfer.files);
     }
   };
 
-  const handleRemoveFile = () => {
-    onChange('invitationLetter', null);
+  const handleRemoveFile = (indexToRemove: number) => {
+    const updated = currentAttachments.filter((_, idx) => idx !== indexToRemove);
+    updateAttachments(updated);
     setUploadError(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+  };
+
+  const handleClearAllFiles = () => {
+    updateAttachments([]);
+    setUploadError(null);
   };
 
   const handleFinalSubmit = () => {
@@ -252,72 +283,132 @@ export const Step3Pemesan: React.FC<Step3PemesanProps> = ({
             />
           </div>
 
-          {/* Row 4: Upload Surat Undangan */}
-          <div>
-            <label className="block text-sm font-bold text-slate-800 mb-1">
-              Upload Nota Dinas / Surat Undangan (Opsional, Max 1 MB)
-            </label>
+          {/* Row 4: Upload Dokumen / File Pendukung (Bisa Lebih Dari 1 File, Maks 1 MB) */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="block text-sm font-bold text-slate-800">
+                Upload File Pendukung / Nota Dinas / Surat Undangan (Bisa &gt; 1 File, Maks. 1 MB per file)
+              </label>
+              {currentAttachments.length > 0 && (
+                <span className="text-xs font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100">
+                  {currentAttachments.length} / {MAX_FILES} file
+                </span>
+              )}
+            </div>
 
-            {!formData.invitationLetter ? (
+            <input
+              ref={fileInputRef}
+              type="file"
+              id="input-invitation-file"
+              multiple
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg"
+              onChange={handleFileChange}
+              className="hidden"
+            />
+
+            {currentAttachments.length === 0 ? (
               <div
                 id="dropzone-invitation-letter"
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
                 onClick={() => fileInputRef.current?.click()}
-                className={`border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition flex flex-col items-center justify-center ${
+                className={`border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition flex flex-col items-center justify-center ${
                   isDragging
                     ? 'border-indigo-500 bg-indigo-50/50'
                     : 'border-slate-300 hover:border-indigo-400 bg-slate-50/50 hover:bg-slate-100/50'
                 }`}
               >
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  id="input-invitation-file"
-                  accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
-                  onChange={handleFileChange}
-                  className="hidden"
-                />
-                <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center mb-1.5">
-                  <UploadCloud className="w-4 h-4" />
+                <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-2">
+                  <UploadCloud className="w-5 h-5" />
                 </div>
                 <p className="text-xs font-semibold text-slate-700">
-                  Klik untuk unggah <span className="font-normal text-slate-500">atau drag & drop file di sini</span>
+                  Klik untuk unggah <span className="font-normal text-slate-500">atau drag & drop file di sini (Bisa pilih beberapa file sekaligus)</span>
                 </p>
-                <p className="text-[10px] text-slate-400 mt-0.5">
-                  Format didukung: PDF, Word (DOCX), atau Gambar (Maks. 1 MB)
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Format didukung: PDF, Word (DOC/DOCX), Excel (XLS/XLSX), Gambar (Maks. 1 MB per file, hingga {MAX_FILES} file)
                 </p>
               </div>
             ) : (
-              <div className="p-3 bg-emerald-50/80 border border-emerald-200 rounded-xl flex items-center justify-between">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0">
-                    <FileCheck className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold text-slate-900 truncate">
-                      {formData.invitationLetter.name}
-                    </p>
-                    <p className="text-[10px] text-slate-500">
-                      {formatFileSize(formData.invitationLetter.size)} • Dokumen Terlampir
-                    </p>
-                  </div>
+              <div className="space-y-2">
+                <div className="space-y-2">
+                  {currentAttachments.map((doc, idx) => (
+                    <div
+                      key={doc.id || idx}
+                      className="p-2.5 sm:p-3 bg-emerald-50/80 border border-emerald-200 rounded-xl flex items-center justify-between gap-2 text-xs"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                          <FileCheck className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-bold text-slate-900 truncate">
+                            {doc.name}
+                          </p>
+                          <p className="text-[10px] text-slate-500">
+                            {formatFileSize(doc.size)} • Dokumen {idx + 1}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1 shrink-0">
+                        {doc.dataUrl && (
+                          <a
+                            href={doc.dataUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-1.5 rounded-lg text-indigo-700 hover:bg-indigo-100/80 transition"
+                            title="Pratinjau / Buka Dokumen"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </a>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveFile(idx)}
+                          className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-100 transition cursor-pointer"
+                          title={`Hapus file ${doc.name}`}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <button
-                  type="button"
-                  onClick={handleRemoveFile}
-                  className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-100 transition cursor-pointer"
-                  title="Hapus Dokumen"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+
+                <div className="flex items-center justify-between pt-1">
+                  {currentAttachments.length < MAX_FILES ? (
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex items-center gap-1.5 text-xs font-bold text-indigo-600 hover:text-indigo-800 hover:underline cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Tambah File Pendukung Lainnya ({currentAttachments.length}/{MAX_FILES})</span>
+                    </button>
+                  ) : (
+                    <span className="text-[11px] text-amber-700 font-medium">
+                      Batas maksimal {MAX_FILES} file telah tercapai
+                    </span>
+                  )}
+
+                  {currentAttachments.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={handleClearAllFiles}
+                      className="text-[11px] font-semibold text-rose-600 hover:underline cursor-pointer"
+                    >
+                      Hapus Semua File
+                    </button>
+                  )}
+                </div>
               </div>
             )}
 
             {uploadError && (
-              <p className="text-xs text-rose-600 mt-1 font-semibold">
-                ⚠️ {uploadError}
+              <p className="text-xs text-rose-600 mt-1 font-semibold flex items-center gap-1">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                <span>{uploadError}</span>
               </p>
             )}
           </div>
@@ -404,6 +495,15 @@ export const Step3Pemesan: React.FC<Step3PemesanProps> = ({
                   Note: "{formData.notes}"
                 </div>
               )}
+
+              {currentAttachments.length > 0 && (
+                <div className="pt-1.5 border-t border-slate-100 flex items-center justify-between text-xs">
+                  <span className="text-slate-500">File Pendukung:</span>
+                  <span className="font-bold text-indigo-700">
+                    📎 {currentAttachments.length} File Terlampir
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -469,6 +569,9 @@ export const Step3Pemesan: React.FC<Step3PemesanProps> = ({
               <div>📅 <strong>{formatDateIndo(formData.meetingDate)}</strong> ({formData.startTime} - {endTime} WIB)</div>
               <div>🏢 <strong>{formData.meetingLocation === 'Tidak menggunakan ruang meeting' ? 'Tanpa Ruangan' : formData.meetingLocation}</strong></div>
               <div>👥 <strong>{formData.participantCount} Peserta</strong> ({formData.snackRingan !== 'Tidak Ada' ? formData.snackRingan : formData.snackBerat !== 'Tidak Ada' ? formData.snackBerat : 'Tanpa Snack'} {formData.makanSiang === 'Iya' ? '+ Makan Siang' : ''})</div>
+              {currentAttachments.length > 0 && (
+                <div>📎 <strong>{currentAttachments.length} File Pendukung Terlampir</strong></div>
+              )}
             </div>
 
             {/* Keterangan & Checklist Persetujuan Peninjauan Admin */}

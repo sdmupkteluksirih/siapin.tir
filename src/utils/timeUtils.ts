@@ -175,6 +175,10 @@ export function getDepartmentPrefix(department?: string, username?: string): str
   if (dept.includes('pengadaan') || dept.includes('logistik') || dept.includes('procurement') || uname.includes('pengadaan') || uname.includes('proc')) {
     return 'DAN';
   }
+  // Sistem Manajemen Terintegrasi = SMT
+  if (dept.includes('sistem manajemen') || dept.includes('terintegrasi') || dept.includes('smt') || uname.includes('sm_terintegrasi') || uname.includes('smt')) {
+    return 'SMT';
+  }
 
   return 'APN';
 }
