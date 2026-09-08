@@ -124,17 +124,25 @@ export const authStorage = {
     }
     try {
       const parsed: UserAccount[] = JSON.parse(stored);
-      // Ensure all DEFAULT_USERS exist in parsed list
-      let hasMissing = false;
-      const combined = [...parsed];
+      // Ensure all DEFAULT_USERS exist in parsed list and synchronize updated default names
+      let needsSave = false;
+      const combined = parsed.map(u => {
+        const def = DEFAULT_USERS.find(d => d.username.toLowerCase() === u.username.toLowerCase());
+        if (def && u.name !== def.name) {
+          needsSave = true;
+          return { ...u, name: def.name, department: def.department };
+        }
+        return u;
+      });
+
       DEFAULT_USERS.forEach(def => {
         const found = combined.some(u => u.username.toLowerCase() === def.username.toLowerCase());
         if (!found) {
           combined.push(def);
-          hasMissing = true;
+          needsSave = true;
         }
       });
-      if (hasMissing) {
+      if (needsSave) {
         localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(combined));
       }
       return combined;
@@ -149,7 +157,14 @@ export const authStorage = {
     const stored = localStorage.getItem(CURRENT_USER_KEY);
     if (!stored) return null;
     try {
-      return JSON.parse(stored);
+      const user: UserAccount = JSON.parse(stored);
+      const def = DEFAULT_USERS.find(d => d.username.toLowerCase() === user.username.toLowerCase());
+      if (def && user.name !== def.name) {
+        const updated = { ...user, name: def.name, department: def.department };
+        localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(updated));
+        return updated;
+      }
+      return user;
     } catch {
       return null;
     }
