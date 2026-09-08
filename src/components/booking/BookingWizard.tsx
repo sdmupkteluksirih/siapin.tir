@@ -50,6 +50,7 @@ export const BookingWizard: React.FC<BookingWizardProps> = ({
       bookerName: user?.name || '',
       department: user?.department || '',
       whatsapp: '',
+      email: user?.email || '',
       meetingTitle: '',
       meetingLocation: '',
       participantCount: 20,
@@ -70,7 +71,8 @@ export const BookingWizard: React.FC<BookingWizardProps> = ({
       setFormData(prev => ({
         ...prev,
         bookerName: prev.bookerName || currentUser.name,
-        department: prev.department || currentUser.department
+        department: prev.department || currentUser.department,
+        email: prev.email || currentUser.email || ''
       }));
     }
   }, [currentUser]);

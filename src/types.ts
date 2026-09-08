@@ -26,6 +26,7 @@ export interface UserAccount {
   name: string;
   role: 'ADMIN' | 'USER';
   department: string;
+  email?: string;
   password: string;
   avatarText?: string;
   lastLogin?: string;
@@ -45,6 +46,7 @@ export interface Booking {
   bookerName: string;
   department: string;
   whatsapp: string;
+  email?: string; // Email pemohon untuk notifikasi status otomatis
   meetingTitle: string;
   meetingLocation: string;
   participantCount: number;
@@ -70,6 +72,7 @@ export interface BookingFormData {
   bookerName: string;
   department: string;
   whatsapp: string;
+  email?: string; // Email pemohon untuk notifikasi otomatis
   meetingTitle: string;
   meetingLocation: string;
   participantCount: number;

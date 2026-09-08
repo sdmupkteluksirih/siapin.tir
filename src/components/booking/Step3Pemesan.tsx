@@ -10,6 +10,7 @@ import {
   User, 
   Building, 
   Phone, 
+  Mail,
   MapPin, 
   Users, 
   FileText, 
@@ -236,11 +237,12 @@ export const Step3Pemesan: React.FC<Step3PemesanProps> = ({
             </div>
           </div>
 
-          {/* Row 2: WhatsApp & Judul Acara */}
+          {/* Row 2: WhatsApp & Email Pemohon */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="input-whatsapp" className="block text-sm font-bold text-slate-800 mb-1">
-                Nomor WhatsApp <span className="text-rose-500">*</span>
+              <label htmlFor="input-whatsapp" className="block text-sm font-bold text-slate-800 mb-1 flex items-center gap-1.5">
+                <Phone className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Nomor WhatsApp <span className="text-rose-500">*</span></span>
               </label>
               <input
                 type="tel"
@@ -254,6 +256,27 @@ export const Step3Pemesan: React.FC<Step3PemesanProps> = ({
             </div>
 
             <div>
+              <label htmlFor="input-email" className="block text-sm font-bold text-slate-800 mb-1 flex items-center gap-1.5">
+                <Mail className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Email Pemohon (Notifikasi Status)</span>
+              </label>
+              <input
+                type="email"
+                id="input-email"
+                placeholder="Contoh: nama.user@pln.co.id"
+                value={formData.email || ''}
+                onChange={(e) => onChange('email', e.target.value)}
+                className="w-full py-2.5 px-3.5 rounded-xl text-sm font-medium border border-slate-200 bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 text-slate-800 placeholder-slate-400"
+              />
+              <p className="text-[11px] text-indigo-600 font-medium mt-1">
+                Notifikasi otomatis persetujuan / update dari admin akan dikirimkan ke email ini.
+              </p>
+            </div>
+          </div>
+
+          {/* Row 3: Judul Acara & Tamu Eksternal */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
               <label htmlFor="input-meeting-title" className="block text-sm font-bold text-slate-800 mb-1">
                 Nama Kegiatan / Agenda Rapat <span className="text-rose-500">*</span>
               </label>
@@ -266,21 +289,20 @@ export const Step3Pemesan: React.FC<Step3PemesanProps> = ({
                 className="w-full py-2.5 px-3.5 rounded-xl text-sm font-medium border border-slate-200 bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 text-slate-800 placeholder-slate-400"
               />
             </div>
-          </div>
 
-          {/* Row 3: Tamu / Instansi Eksternal */}
-          <div>
-            <label htmlFor="input-organization-guests" className="block text-sm font-bold text-slate-800 mb-1">
-              Instansi / Tamu Eksternal (Opsional)
-            </label>
-            <input
-              type="text"
-              id="input-organization-guests"
-              placeholder="Contoh: Tim Vendor PT Siemens / Tamu PLN Kantor Pusat"
-              value={formData.organizationOrGuests || ''}
-              onChange={(e) => onChange('organizationOrGuests', e.target.value)}
-              className="w-full py-2.5 px-3.5 rounded-xl text-sm font-medium border border-slate-200 bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 text-slate-800 placeholder-slate-400"
-            />
+            <div>
+              <label htmlFor="input-organization-guests" className="block text-sm font-bold text-slate-800 mb-1">
+                Instansi / Tamu Eksternal (Opsional)
+              </label>
+              <input
+                type="text"
+                id="input-organization-guests"
+                placeholder="Contoh: Tim Vendor PT Siemens / PLN Kantor Pusat"
+                value={formData.organizationOrGuests || ''}
+                onChange={(e) => onChange('organizationOrGuests', e.target.value)}
+                className="w-full py-2.5 px-3.5 rounded-xl text-sm font-medium border border-slate-200 bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 text-slate-800 placeholder-slate-400"
+              />
+            </div>
           </div>
 
           {/* Row 4: Upload Dokumen / File Pendukung (Bisa Lebih Dari 1 File, Maks 1 MB) */}
@@ -571,6 +593,9 @@ export const Step3Pemesan: React.FC<Step3PemesanProps> = ({
               <div>👥 <strong>{formData.participantCount} Peserta</strong> ({formData.snackRingan !== 'Tidak Ada' ? formData.snackRingan : formData.snackBerat !== 'Tidak Ada' ? formData.snackBerat : 'Tanpa Snack'} {formData.makanSiang === 'Iya' ? '+ Makan Siang' : ''})</div>
               {currentAttachments.length > 0 && (
                 <div>📎 <strong>{currentAttachments.length} File Pendukung Terlampir</strong></div>
+              )}
+              {formData.email && (
+                <div>📧 <strong>Notifikasi status dikirim ke:</strong> {formData.email}</div>
               )}
             </div>
 

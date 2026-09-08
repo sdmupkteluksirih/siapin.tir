@@ -811,6 +811,7 @@ export const bookingStorage = {
       bookerName: formData.bookerName.trim(),
       department: formData.department.trim(),
       whatsapp: formData.whatsapp.trim(),
+      email: formData.email?.trim() || undefined,
       meetingTitle: formData.meetingTitle.trim(),
       meetingLocation: formData.meetingLocation.trim(),
       participantCount: Number(formData.participantCount) || 1,

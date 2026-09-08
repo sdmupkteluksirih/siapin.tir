@@ -3,6 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { createServer as createViteServer } from 'vite';
+import { emailService } from './server/emailService';
 
 const app = express();
 const PORT = 3000;
@@ -380,6 +381,12 @@ app.post('/api/bookings', (req, res) => {
   const updated = [newBooking, ...current.filter((b) => b.id !== newBooking.id)];
   writeBookings(updated);
 
+  // Send asynchronous notification email to admins
+  const origin = `${req.protocol}://${req.get('host')}`;
+  emailService.sendNewBookingAdminAlert(newBooking, origin).catch((err) => {
+    console.error('[API] Gagal kirim email alert admin:', err);
+  });
+
   res.status(201).json(newBooking);
 });
 
@@ -391,10 +398,12 @@ app.put('/api/bookings/:id', (req, res) => {
   const current = readBookings();
   let found = false;
   let updatedItem: any = null;
+  let originalItem: any = null;
 
   const updated = current.map((b) => {
     if (b.id === id) {
       found = true;
+      originalItem = { ...b };
       updatedItem = { ...b, ...updates, updatedAt: new Date().toISOString() };
       return updatedItem;
     }
@@ -406,7 +415,48 @@ app.put('/api/bookings/:id', (req, res) => {
   }
 
   writeBookings(updated);
+
+  // If status changed or approval notes were updated, send email notification to user
+  const statusChanged = originalItem && (originalItem.status !== updatedItem.status);
+  const notesChanged = originalItem && (originalItem.approvalNotes !== updatedItem.approvalNotes);
+  if (statusChanged || notesChanged) {
+    const origin = `${req.protocol}://${req.get('host')}`;
+    emailService.sendBookingStatusUpdateUserAlert(updatedItem, originalItem?.status, origin).catch((err) => {
+      console.error('[API] Gagal kirim email update status ke user:', err);
+    });
+  }
+
   res.json(updatedItem);
+});
+
+// GET email config (safe public view)
+app.get('/api/email-config', (req, res) => {
+  res.json(emailService.getPublicConfig());
+});
+
+// POST email config
+app.post('/api/email-config', (req, res) => {
+  const success = emailService.updateConfig(req.body);
+  if (success) {
+    res.json({ success: true, config: emailService.getPublicConfig() });
+  } else {
+    res.status(500).json({ error: 'Gagal memperbarui konfigurasi email' });
+  }
+});
+
+// POST test email
+app.post('/api/test-email', async (req, res) => {
+  const { targetEmail } = req.body;
+  if (!targetEmail) {
+    return res.status(400).json({ error: 'Alamat email tujuan wajib diisi' });
+  }
+  const result = await emailService.sendTestEmail(targetEmail);
+  res.json(result);
+});
+
+// GET email notification logs
+app.get('/api/email-logs', (req, res) => {
+  res.json(emailService.getLogs());
 });
 
 // DELETE booking
