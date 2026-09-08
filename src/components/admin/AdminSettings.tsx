@@ -637,7 +637,7 @@ export const AdminSettings: React.FC = () => {
             </div>
             <div>
               <h3 className="font-bold text-slate-900 text-base">
-                Manajemen Akun Bagian (8 Akun User & 1 Admin)
+                Manajemen Akun Bagian
               </h3>
               <p className="text-xs text-slate-500">
                 Kelola hak akses, cek username, dan reset kata sandi akun bagian.
@@ -681,10 +681,13 @@ export const AdminSettings: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-                <span className="text-[11px] text-slate-500 font-mono bg-white px-2 py-1 rounded border border-slate-200">
-                  Pass: <strong>{user.password}</strong>
-                </span>
+              <div className="flex items-center gap-2 shrink-0 flex-wrap sm:flex-nowrap">
+                <div 
+                  className="w-28 h-8 px-2.5 rounded-lg border border-slate-200 bg-white flex items-center justify-center font-mono text-[11px] text-slate-600 shadow-2xs"
+                  title={`Kata sandi akun: ${user.password}`}
+                >
+                  <span className="truncate">Pass: <strong className="text-slate-900">{user.password}</strong></span>
+                </div>
                 <button
                   type="button"
                   onClick={() => {
@@ -698,11 +701,11 @@ export const AdminSettings: React.FC = () => {
                       window.location.reload();
                     }
                   }}
-                  className="px-2.5 py-1 rounded-lg border border-indigo-200 bg-indigo-50/70 hover:bg-indigo-100 text-indigo-700 font-semibold text-xs transition-colors cursor-pointer flex items-center gap-1"
+                  className="w-28 h-8 rounded-lg border border-indigo-200 bg-indigo-50/80 hover:bg-indigo-100 text-indigo-700 font-semibold text-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-2xs"
                   title="Atur email notifikasi akun"
                 >
-                  <Mail className="w-3 h-3" />
-                  <span>{user.email ? 'Ubah Email' : '+ Email'}</span>
+                  <Mail className="w-3.5 h-3.5 shrink-0 text-indigo-600" />
+                  <span className="truncate">{user.email ? 'Ubah Email' : '+ Email'}</span>
                 </button>
                 <button
                   type="button"
@@ -714,9 +717,11 @@ export const AdminSettings: React.FC = () => {
                       window.location.reload();
                     }
                   }}
-                  className="px-2.5 py-1 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 font-semibold text-xs transition-colors cursor-pointer"
+                  className="w-28 h-8 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 font-semibold text-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-2xs"
+                  title="Reset kata sandi akun"
                 >
-                  Reset Pass
+                  <KeyRound className="w-3.5 h-3.5 shrink-0 text-slate-500" />
+                  <span className="truncate">Reset Pass</span>
                 </button>
               </div>
             </div>
