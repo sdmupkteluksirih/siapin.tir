@@ -191,11 +191,13 @@ export const AdminSettings: React.FC = () => {
         setTimeout(() => setEmailSaveSuccess(false), 3500);
         loadEmailLogs();
       } else {
-        alert('Gagal menyimpan konfigurasi email.');
+        const errJson = await res.json().catch(() => null);
+        const errorText = errJson?.error || `Server merespon dengan status ${res.status}`;
+        alert(`Gagal menyimpan konfigurasi email: ${errorText}`);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert('Terjadi kesalahan saat menyimpan konfigurasi.');
+      alert(`Terjadi kesalahan koneksi saat menyimpan konfigurasi: ${err?.message || err}`);
     }
   };
 

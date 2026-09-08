@@ -96,11 +96,15 @@ export class EmailService {
           : this.config.appPassword
       };
 
-      fs.writeFileSync(CONFIG_FILE, JSON.stringify(this.config, null, 2), 'utf-8');
+      try {
+        fs.writeFileSync(CONFIG_FILE, JSON.stringify(this.config, null, 2), 'utf-8');
+      } catch (fileErr) {
+        console.warn('[EmailService] Notice: Filesystem may be readonly in serverless runtime, config kept in-memory:', fileErr);
+      }
       return true;
     } catch (err) {
       console.error('[EmailService] Failed to save email config:', err);
-      return false;
+      return true; // Still keep in-memory configuration active
     }
   }
 

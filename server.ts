@@ -928,4 +928,10 @@ async function startServer() {
   });
 }
 
-startServer();
+// Only listen directly when not executed by Vercel serverless functions
+if (!process.env.VERCEL) {
+  startServer();
+}
+
+export default app;
+
