@@ -31,7 +31,7 @@ const DEFAULT_CONFIG: EmailConfig = {
   enabled: true,
   senderEmail: process.env.GMAIL_USER || 'sdm.upkteluksirih@gmail.com',
   senderName: 'SI APIN - PLN UPK Teluk Sirih',
-  appPassword: process.env.GMAIL_APP_PASSWORD || '',
+  appPassword: process.env.GMAIL_APP_PASSWORD || 'zoxx cuni styv egyu',
   adminRecipients: (process.env.ADMIN_NOTIFICATION_EMAILS || 'sdm.upkteluksirih@gmail.com')
     .split(',')
     .map(e => e.trim())

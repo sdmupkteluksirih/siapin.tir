@@ -1,0 +1,11 @@
+{
+  "enabled": true,
+  "senderEmail": "sdm.upkteluksirih@gmail.com",
+  "senderName": "SI APIN - PLN UPK Teluk Sirih",
+  "appPassword": "zoxx cuni styv egyu",
+  "adminRecipients": [
+    "sdm.upkteluksirih@gmail.com"
+  ],
+  "sendOnNewBooking": true,
+  "sendOnStatusChange": true
+}
