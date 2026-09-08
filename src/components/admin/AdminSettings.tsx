@@ -3,6 +3,7 @@ import { bookingStorage } from '../../services/bookingStorage';
 import { authStorage } from '../../services/authStorage';
 import { themeStorage, BackgroundSettings, BackgroundStyle, OverlayTone } from '../../services/themeStorage';
 import { whatsappService, AdminContact } from '../../services/whatsappService';
+import { UserAccount } from '../../types';
 import { 
   Building2, 
   RotateCcw, 
@@ -26,13 +27,29 @@ import {
   ArrowUp,
   ArrowDown,
   Pencil,
-  X
+  X,
+  KeyRound,
+  ShieldCheck,
+  UserCheck,
+  Lock,
+  Eye,
+  EyeOff,
+  UserCog
 } from 'lucide-react';
 
 export const AdminSettings: React.FC = () => {
   const [resetSuccess, setResetSuccess] = useState(false);
   const [bgSettings, setBgSettings] = useState<BackgroundSettings>(() => themeStorage.getSettings());
   const [bgSavedSuccess, setBgSavedSuccess] = useState(false);
+
+  // 4 Admin Accounts state
+  const [adminUsers, setAdminUsers] = useState<UserAccount[]>(() => 
+    authStorage.getAllUsers().filter(u => u.role === 'ADMIN')
+  );
+  const [changingPassUserId, setChangingPassUserId] = useState<string | null>(null);
+  const [newPasswordVal, setNewPasswordVal] = useState('');
+  const [showPasswordVal, setShowPasswordVal] = useState(false);
+  const [passChangeSuccess, setPassChangeSuccess] = useState<string | null>(null);
 
   // WhatsApp Admin Contacts state
   const [adminContacts, setAdminContacts] = useState<AdminContact[]>(() => whatsappService.getAdminContacts());
@@ -49,11 +66,46 @@ export const AdminSettings: React.FC = () => {
   const [editContactRole, setEditContactRole] = useState('');
 
   useEffect(() => {
-    const unsub = themeStorage.subscribe((updated) => {
+    const unsubTheme = themeStorage.subscribe((updated) => {
       setBgSettings(updated);
     });
-    return () => unsub();
+    const unsubAuth = authStorage.subscribe(() => {
+      setAdminUsers(authStorage.getAllUsers().filter(u => u.role === 'ADMIN'));
+    });
+    return () => {
+      unsubTheme();
+      unsubAuth();
+    };
   }, []);
+
+  const handleStartChangePassword = (userId: string) => {
+    setChangingPassUserId(userId);
+    setNewPasswordVal('');
+    setShowPasswordVal(false);
+  };
+
+  const handleCancelChangePassword = () => {
+    setChangingPassUserId(null);
+    setNewPasswordVal('');
+    setShowPasswordVal(false);
+  };
+
+  const handleSaveAdminPassword = (userId: string, userName: string) => {
+    if (!newPasswordVal.trim() || newPasswordVal.trim().length < 4) {
+      alert('Kata sandi baru minimal 4 karakter.');
+      return;
+    }
+
+    const success = authStorage.resetPassword(userId, newPasswordVal.trim());
+    if (success) {
+      setPassChangeSuccess(`Kata sandi akun ${userName} berhasil diperbarui.`);
+      setChangingPassUserId(null);
+      setNewPasswordVal('');
+      setTimeout(() => setPassChangeSuccess(null), 3000);
+    } else {
+      alert('Gagal memperbarui kata sandi. Silakan coba lagi.');
+    }
+  };
 
   const handleBgChange = <K extends keyof BackgroundSettings>(key: K, value: BackgroundSettings[K]) => {
     const updated = { ...bgSettings, [key]: value };
@@ -282,6 +334,173 @@ export const AdminSettings: React.FC = () => {
               className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
             />
           </div>
+        </div>
+      </div>
+
+      {/* Card: Akun Administrator Sistem (4 Admin Resmi) */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-4">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-100 flex-wrap gap-2">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-bold text-slate-900 text-base flex items-center gap-2">
+                <span>Daftar Akun Administrator Sistem</span>
+                <span className="text-xs bg-indigo-100 text-indigo-800 font-bold px-2 py-0.5 rounded-full border border-indigo-200">
+                  4 Admin Resmi
+                </span>
+              </h3>
+              <p className="text-xs text-slate-500">
+                Akun administrator berwenang untuk persetujuan (approve/reject), rekapitulasi, dan audit trail SI APIN.
+              </p>
+            </div>
+          </div>
+
+          {passChangeSuccess && (
+            <span className="text-xs text-emerald-700 bg-emerald-50 font-bold px-3 py-1 rounded-full border border-emerald-200 animate-in fade-in flex items-center gap-1">
+              <Check className="w-3.5 h-3.5" />
+              {passChangeSuccess}
+            </span>
+          )}
+        </div>
+
+        <div className="space-y-3">
+          {adminUsers.map((adm) => {
+            const isEditingPassword = changingPassUserId === adm.id;
+
+            return (
+              <div
+                key={adm.id}
+                id={`admin-account-card-${adm.username}`}
+                className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-slate-50 transition-all space-y-3"
+              >
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white font-black text-sm flex items-center justify-center shrink-0 shadow-2xs">
+                      {adm.avatarText || adm.name.slice(0, 2).toUpperCase()}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <strong className="text-sm text-slate-900">{adm.name}</strong>
+                        {adm.username === 'nofi' && (
+                          <span className="text-[10px] font-bold bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded border border-indigo-200">
+                            Admin User 1
+                          </span>
+                        )}
+                        {adm.username === 'resna' && (
+                          <span className="text-[10px] font-bold bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded border border-indigo-200">
+                            Admin User 2
+                          </span>
+                        )}
+                        {adm.username === 'deri' && (
+                          <span className="text-[10px] font-bold bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded border border-blue-200">
+                            Admin Aplikasi 1
+                          </span>
+                        )}
+                        {adm.username === 'yuda' && (
+                          <span className="text-[10px] font-bold bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded border border-blue-200">
+                            Admin Aplikasi 2
+                          </span>
+                        )}
+                        {adm.username === 'admin' && (
+                          <span className="text-[10px] font-bold bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded">
+                            Master Admin
+                          </span>
+                        )}
+                        <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded border border-emerald-200 flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                          Aktif
+                        </span>
+                      </div>
+                      <div className="text-xs text-slate-500 flex items-center gap-2 flex-wrap mt-0.5">
+                        <span className="text-slate-600 font-medium">{adm.department}</span>
+                        <span>•</span>
+                        <span className="font-mono text-slate-700 font-semibold bg-white px-2 py-0.5 rounded border border-slate-200 text-[11px]">
+                          User ID: <strong className="text-indigo-600">{adm.username}</strong>
+                        </span>
+                        {adm.lastLogin && (
+                          <>
+                            <span>•</span>
+                            <span className="text-[11px] text-slate-400">
+                              Login terakhir: {new Date(adm.lastLogin).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => isEditingPassword ? handleCancelChangePassword() : handleStartChangePassword(adm.id)}
+                      className="px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                    >
+                      <KeyRound className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>{isEditingPassword ? 'Batal' : 'Ubah Kata Sandi'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Inline Change Password Form */}
+                {isEditingPassword && (
+                  <div className="p-3.5 rounded-xl border border-indigo-200 bg-indigo-50/50 space-y-2.5 animate-in fade-in">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-indigo-950 flex items-center gap-1.5">
+                        <Lock className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>Atur Kata Sandi Baru untuk {adm.name}</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleCancelChangePassword}
+                        className="text-slate-400 hover:text-slate-600 p-1"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                      <div className="relative flex-1 w-full">
+                        <input
+                          type={showPasswordVal ? 'text' : 'password'}
+                          value={newPasswordVal}
+                          onChange={(e) => setNewPasswordVal(e.target.value)}
+                          placeholder="Ketik kata sandi baru (min. 4 karakter)"
+                          className="w-full px-3 py-2 pr-10 text-xs rounded-xl border border-slate-300 bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 font-mono shadow-2xs"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPasswordVal(!showPasswordVal)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                        >
+                          {showPasswordVal ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleSaveAdminPassword(adm.id, adm.name)}
+                          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-2xs flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                          <span>Simpan Sandi</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCancelChangePassword}
+                          className="px-3 py-2 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-semibold transition cursor-pointer"
+                        >
+                          Batal
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 

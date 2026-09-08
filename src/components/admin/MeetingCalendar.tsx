@@ -21,9 +21,11 @@ export const MeetingCalendar: React.FC<MeetingCalendarProps> = ({
   bookings,
   onSelectBooking
 }) => {
-  const [selectedDate, setSelectedDate] = useState<string>(getTodayDateString());
-  const [currentYear, setCurrentYear] = useState<number>(2026);
-  const [currentMonth, setCurrentMonth] = useState<number>(7); // 0-indexed (7 = August)
+  const todayStr = getTodayDateString();
+  const [initYear, initMonth] = todayStr.split('-').map(Number);
+  const [selectedDate, setSelectedDate] = useState<string>(todayStr);
+  const [currentYear, setCurrentYear] = useState<number>(initYear || 2026);
+  const [currentMonth, setCurrentMonth] = useState<number>(initMonth ? initMonth - 1 : 8); // 0-indexed
 
   const monthNames = [
     'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',

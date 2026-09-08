@@ -9,7 +9,8 @@ import {
   UtensilsCrossed, 
   Settings, 
   LogOut,
-  X
+  X,
+  ShieldCheck
 } from 'lucide-react';
 
 interface AdminSidebarProps {
@@ -25,7 +26,8 @@ const MENU_ITEMS = [
   { id: 'booking' as AdminTab, label: 'Booking', icon: BookOpenCheck },
   { id: 'kalender' as AdminTab, label: 'Kalender', icon: Calendar },
   { id: 'rekap' as AdminTab, label: 'Rekap Konsumsi', icon: UtensilsCrossed },
-  { id: 'pengaturan' as AdminTab, label: 'Pengaturan', icon: Settings },
+  { id: 'logs' as AdminTab, label: 'Log Aktivitas', icon: ShieldCheck },
+  { id: 'pengaturan' as AdminTab, label: 'Pengaturan & User', icon: Settings },
 ];
 
 export const AdminSidebar: React.FC<AdminSidebarProps> = ({

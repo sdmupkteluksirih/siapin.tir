@@ -103,6 +103,32 @@ export interface RekapHarian {
   bookings: Booking[];
 }
 
-export type AdminTab = 'dashboard' | 'booking' | 'kalender' | 'rekap' | 'users' | 'pengaturan';
+export type AdminTab = 'dashboard' | 'booking' | 'kalender' | 'rekap' | 'users' | 'logs' | 'pengaturan';
 export type MainView = 'booking' | 'search' | 'admin' | 'login';
+
+export type ActivityAction = 
+  | 'LOGIN' 
+  | 'LOGOUT' 
+  | 'BOOKING_CREATE' 
+  | 'BOOKING_APPROVE' 
+  | 'BOOKING_UPDATE' 
+  | 'BOOKING_CANCEL' 
+  | 'BOOKING_DELETE' 
+  | 'USER_CREATE' 
+  | 'USER_UPDATE' 
+  | 'PASSWORD_RESET' 
+  | 'SETTINGS_CHANGE';
+
+export interface ActivityLog {
+  id: string;
+  timestamp: string; // ISO string
+  userId: string;
+  userName: string;
+  userDepartment: string;
+  userRole: 'ADMIN' | 'USER';
+  action: ActivityAction;
+  details: string;
+  targetId?: string; // e.g. booking number / user id
+  metadata?: Record<string, any>;
+}
 

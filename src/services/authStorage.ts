@@ -1,16 +1,65 @@
 import { UserAccount } from '../types';
+import { activityLogger } from './activityLogger';
 
 const USERS_STORAGE_KEY = 'meeting_app_users_v1';
 const CURRENT_USER_KEY = 'meeting_app_current_user_v1';
 const AUTH_LISTEN_EVENT = 'meeting_app_auth_changed';
 
 // Default user accounts with Admin credentials:
-// Admin ID / Username: admin | Password: admin123
+// Admin 1 (User 1): NOFI ZAHARA (ID: nofi / admin.nofi)
+// Admin 2 (User 2): RESNA WATI (ID: resna / admin.resna)
+// Admin 3 (Aplikasi 1): DERI TIALIS PERISTIAWAN (ID: deri / admin.deri)
+// Admin 4 (Aplikasi 2): YUDA PUTRA UTAMA (ID: yuda / admin.yuda)
+// Master Admin: admin | Password awal: admin123
 export const DEFAULT_USERS: UserAccount[] = [
+  {
+    id: 'usr-admin-nofi',
+    username: 'nofi',
+    name: 'NOFI ZAHARA',
+    role: 'ADMIN',
+    department: 'Keuangan & Umum (Admin User 1)',
+    password: 'admin123',
+    avatarText: 'NZ',
+    lastLogin: '2026-08-20T08:00:00.000Z',
+    createdAt: '2026-01-01T00:00:00.000Z'
+  },
+  {
+    id: 'usr-admin-resna',
+    username: 'resna',
+    name: 'RESNA WATI',
+    role: 'ADMIN',
+    department: 'Keuangan & Umum (Admin User 2)',
+    password: 'admin123',
+    avatarText: 'RW',
+    lastLogin: '2026-08-20T08:00:00.000Z',
+    createdAt: '2026-01-01T00:00:00.000Z'
+  },
+  {
+    id: 'usr-admin-deri',
+    username: 'deri',
+    name: 'DERI TIALIS PERISTIAWAN',
+    role: 'ADMIN',
+    department: 'Sistem Informasi & TI (Admin Aplikasi 1)',
+    password: 'admin123',
+    avatarText: 'DP',
+    lastLogin: '2026-08-20T08:00:00.000Z',
+    createdAt: '2026-01-01T00:00:00.000Z'
+  },
+  {
+    id: 'usr-admin-yuda',
+    username: 'yuda',
+    name: 'YUDA PUTRA UTAMA',
+    role: 'ADMIN',
+    department: 'Sistem Informasi & TI (Admin Aplikasi 2)',
+    password: 'admin123',
+    avatarText: 'YP',
+    lastLogin: '2026-08-20T08:00:00.000Z',
+    createdAt: '2026-01-01T00:00:00.000Z'
+  },
   {
     id: 'usr-admin',
     username: 'admin',
-    name: 'Administrator (Admin Si APIN / Konsumsi)',
+    name: 'Administrator Si APIN (Master)',
     role: 'ADMIN',
     department: 'Keuangan & Umum',
     password: 'admin123',
@@ -282,7 +331,31 @@ export const authStorage = {
   login(username: string, password: string): { success: boolean; user?: UserAccount; error?: string } {
     const users = this.getAllUsers();
     const cleanUsername = username.trim().toLowerCase();
-    const user = users.find(u => u.username.toLowerCase() === cleanUsername);
+
+    // Map common aliases to their respective usernames
+    const aliasMap: Record<string, string> = {
+      'admin.nofi': 'nofi',
+      'admin1': 'nofi',
+      'nofizahara': 'nofi',
+      'nofi zahara': 'nofi',
+      'admin.resna': 'resna',
+      'admin2': 'resna',
+      'resnawati': 'resna',
+      'resna wati': 'resna',
+      'admin.deri': 'deri',
+      'admin3': 'deri',
+      'deritialis': 'deri',
+      'deri tialis': 'deri',
+      'deri tialis peristiawan': 'deri',
+      'admin.yuda': 'yuda',
+      'admin4': 'yuda',
+      'yudaputra': 'yuda',
+      'yuda putra': 'yuda',
+      'yuda putra utama': 'yuda',
+    };
+
+    const targetUsername = aliasMap[cleanUsername] || cleanUsername;
+    const user = users.find(u => u.username.toLowerCase() === targetUsername);
 
     if (!user) {
       return { success: false, error: 'User ID / Username tidak ditemukan.' };
@@ -303,11 +376,34 @@ export const authStorage = {
     localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(updatedUser));
     notifyAuthSubscribers();
 
+    // Log login activity
+    try {
+      activityLogger.log(
+        'LOGIN',
+        `User ${updatedUser.name} (${updatedUser.department}) berhasil login ke sistem`,
+        updatedUser.username,
+        { role: updatedUser.role, department: updatedUser.department },
+        updatedUser
+      );
+    } catch {}
+
     return { success: true, user: updatedUser };
   },
 
   logout(): void {
     if (typeof window !== 'undefined') {
+      const current = this.getCurrentUser();
+      if (current) {
+        try {
+          activityLogger.log(
+            'LOGOUT',
+            `User ${current.name} (${current.department}) keluar (logout) dari sesi aplikasi`,
+            current.username,
+            undefined,
+            current
+          );
+        } catch {}
+      }
       localStorage.removeItem(CURRENT_USER_KEY);
       notifyAuthSubscribers();
     }
@@ -338,6 +434,9 @@ export const authStorage = {
       }
       notifyAuthSubscribers();
       syncUsersToServer(updated);
+      try {
+        activityLogger.log('PASSWORD_RESET', `Mereset password untuk akun: ${userId}`, userId);
+      } catch {}
       return true;
     }
     return false;
@@ -415,6 +514,9 @@ export const authStorage = {
     localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
     notifyAuthSubscribers();
     syncUsersToServer(users);
+    try {
+      activityLogger.log('USER_CREATE', `Menambahkan pengguna baru: ${newUser.name} (${newUser.department}) [${newUser.role}]`, newUser.username);
+    } catch {}
     return newUser;
   },
 
@@ -430,6 +532,11 @@ export const authStorage = {
     localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(filtered));
     notifyAuthSubscribers();
     syncUsersToServer(filtered);
+    try {
+      if (target) {
+        activityLogger.log('USER_UPDATE', `Menghapus akun pengguna: ${target.name} (@${target.username})`, target.username);
+      }
+    } catch {}
     return true;
   },
 

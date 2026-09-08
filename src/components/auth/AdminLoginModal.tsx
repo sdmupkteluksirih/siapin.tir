@@ -154,40 +154,64 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
             <div className="flex items-center justify-between text-indigo-950 font-bold">
               <span className="flex items-center gap-1.5">
                 <KeyRound className="w-3.5 h-3.5 text-indigo-600" />
-                <span>Akun Default Sistem:</span>
+                <span>Pilih Akun Administrator (4 Admin):</span>
               </span>
               <span className="text-[10px] text-indigo-600 font-semibold bg-white px-2 py-0.5 rounded border border-indigo-200">
-                Siap Digunakan
+                Aktif & Siap
               </span>
             </div>
 
             <div className="grid grid-cols-2 gap-2 text-[11px]">
               <div 
-                onClick={() => handleQuickFill('admin', 'admin123')}
-                className="p-2 rounded-lg bg-white border border-indigo-100 hover:border-indigo-300 hover:bg-indigo-50/50 cursor-pointer transition-all space-y-0.5"
+                onClick={() => handleQuickFill('nofi', 'admin123')}
+                className="p-2 rounded-lg bg-white border border-indigo-100 hover:border-indigo-400 hover:bg-indigo-50/70 cursor-pointer transition-all space-y-0.5 shadow-2xs"
               >
                 <div className="font-bold text-slate-900 flex items-center justify-between">
-                  <span>Akun Admin</span>
-                  <span className="text-[9px] bg-indigo-600 text-white font-bold px-1 rounded">MASTER</span>
+                  <span className="truncate">NOFI ZAHARA</span>
+                  <span className="text-[8px] bg-indigo-600 text-white font-bold px-1 rounded">USER 1</span>
                 </div>
-                <div className="font-mono text-slate-600 text-[10px]">ID: <strong>admin</strong></div>
-                <div className="font-mono text-slate-600 text-[10px]">Pass: <strong>admin123</strong></div>
+                <div className="font-mono text-slate-600 text-[10px]">ID: <strong>nofi</strong></div>
+                <div className="font-mono text-slate-500 text-[9px]">Pass: admin123</div>
               </div>
 
               <div 
-                onClick={() => handleQuickFill('operasi', 'user123')}
-                className="p-2 rounded-lg bg-white border border-indigo-100 hover:border-indigo-300 hover:bg-indigo-50/50 cursor-pointer transition-all space-y-0.5"
+                onClick={() => handleQuickFill('resna', 'admin123')}
+                className="p-2 rounded-lg bg-white border border-indigo-100 hover:border-indigo-400 hover:bg-indigo-50/70 cursor-pointer transition-all space-y-0.5 shadow-2xs"
               >
                 <div className="font-bold text-slate-900 flex items-center justify-between">
-                  <span>Akun Divisi</span>
-                  <span className="text-[9px] bg-slate-200 text-slate-700 font-bold px-1 rounded">PIC</span>
+                  <span className="truncate">RESNA WATI</span>
+                  <span className="text-[8px] bg-indigo-600 text-white font-bold px-1 rounded">USER 2</span>
                 </div>
-                <div className="font-mono text-slate-600 text-[10px]">ID: <strong>operasi</strong></div>
-                <div className="font-mono text-slate-600 text-[10px]">Pass: <strong>user123</strong></div>
+                <div className="font-mono text-slate-600 text-[10px]">ID: <strong>resna</strong></div>
+                <div className="font-mono text-slate-500 text-[9px]">Pass: admin123</div>
+              </div>
+
+              <div 
+                onClick={() => handleQuickFill('deri', 'admin123')}
+                className="p-2 rounded-lg bg-white border border-indigo-100 hover:border-indigo-400 hover:bg-indigo-50/70 cursor-pointer transition-all space-y-0.5 shadow-2xs"
+              >
+                <div className="font-bold text-slate-900 flex items-center justify-between">
+                  <span className="truncate">DERI TIALIS P.</span>
+                  <span className="text-[8px] bg-blue-600 text-white font-bold px-1 rounded">APLIKASI 1</span>
+                </div>
+                <div className="font-mono text-slate-600 text-[10px]">ID: <strong>deri</strong></div>
+                <div className="font-mono text-slate-500 text-[9px]">Pass: admin123</div>
+              </div>
+
+              <div 
+                onClick={() => handleQuickFill('yuda', 'admin123')}
+                className="p-2 rounded-lg bg-white border border-indigo-100 hover:border-indigo-400 hover:bg-indigo-50/70 cursor-pointer transition-all space-y-0.5 shadow-2xs"
+              >
+                <div className="font-bold text-slate-900 flex items-center justify-between">
+                  <span className="truncate">YUDA PUTRA U.</span>
+                  <span className="text-[8px] bg-blue-600 text-white font-bold px-1 rounded">APLIKASI 2</span>
+                </div>
+                <div className="font-mono text-slate-600 text-[10px]">ID: <strong>yuda</strong></div>
+                <div className="font-mono text-slate-500 text-[9px]">Pass: admin123</div>
               </div>
             </div>
             <p className="text-[10px] text-slate-500 italic text-center pt-0.5">
-              *Klik kotak di atas untuk mengisi form secara instan.
+              *Klik nama admin di atas untuk login langsung, atau ketik ID & password secara manual.
             </p>
           </div>
 

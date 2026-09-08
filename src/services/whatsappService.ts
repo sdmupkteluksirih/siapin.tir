@@ -14,16 +14,28 @@ const ADMIN_CONTACTS_KEY = 'siapin_admin_wa_contacts_v1';
 const DEFAULT_ADMIN_CONTACTS: AdminContact[] = [
   {
     id: 'adm-1',
-    name: 'Admin Si APIN (UPK Teluk Sirih)',
+    name: 'NOFI ZAHARA',
     phone: '081267890123',
-    role: 'Pengelola Ruang Rapat & Fasilitas',
+    role: 'Admin User 1 (Pengelola Ruang Rapat & Fasilitas)',
     isPrimary: true
   },
   {
     id: 'adm-2',
-    name: 'PIC Konsumsi & Snack (Keuangan & Umum)',
+    name: 'RESNA WATI',
     phone: '081374567890',
-    role: 'Koordinator Konsumsi & Layanan Rapat'
+    role: 'Admin User 2 (Koordinator Konsumsi & Layanan Rapat)'
+  },
+  {
+    id: 'adm-3',
+    name: 'DERI TIALIS PERISTIAWAN',
+    phone: '081261234567',
+    role: 'Admin Aplikasi 1 (Dukungan Sistem & TI)'
+  },
+  {
+    id: 'adm-4',
+    name: 'YUDA PUTRA UTAMA',
+    phone: '081269876543',
+    role: 'Admin Aplikasi 2 (Dukungan Sistem & TI)'
   }
 ];
 

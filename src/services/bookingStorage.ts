@@ -1,5 +1,6 @@
 import { Booking, BookingFormData, BookingStatus, RekapHarian } from '../types';
 import { calculateEndTime, generateDepartmentBookingNumber, getTodayDateString } from '../utils/timeUtils';
+import { activityLogger } from './activityLogger';
 
 const STORAGE_KEY = 'meeting_snack_bookings_v4';
 const LISTEN_EVENT = 'meeting_bookings_changed';
@@ -484,6 +485,69 @@ const INITIAL_BOOKINGS: Booking[] = [
     notes: 'Disajikan kopi dan teh hangat.',
     status: 'CONFIRMED',
     createdAt: '2026-08-27T10:00:00.000Z'
+  },
+  {
+    id: 'b-keu-20260908-01',
+    bookingNumber: 'KSA-20260908-0001',
+    meetingDate: '2026-09-08',
+    startTime: '09:30',
+    durationHours: 2,
+    endTime: '11:30',
+    snackRingan: 'Snack Mix Basah Kering',
+    snackBerat: 'Tidak Ada',
+    makanSiang: 'Iya',
+    bookerName: 'Siti Rahmawati (Keuangan)',
+    department: 'Keuangan & Umum',
+    whatsapp: '081398765432',
+    meetingTitle: 'Rapat Koordinasi Anggaran & Evaluasi Keuangan Semester II',
+    meetingLocation: 'Room meeting KU lt. 1',
+    participantCount: 20,
+    organizationOrGuests: 'Tim Anggaran & Akuntansi PLTU Teluk Sirih',
+    notes: 'Mohon proyektor dan snack disiapkan sebelum jam 09:30.',
+    status: 'BOOKED',
+    createdAt: '2026-09-08T02:30:00.000Z'
+  },
+  {
+    id: 'b-adm-20260909-01',
+    bookingNumber: 'ADM-20260909-0001',
+    meetingDate: '2026-09-09',
+    startTime: '09:00',
+    durationHours: 2,
+    endTime: '11:00',
+    snackRingan: 'Snack Mix Basah Kering',
+    snackBerat: 'Tidak Ada',
+    makanSiang: 'Iya',
+    bookerName: 'Admin SI APIN',
+    department: 'Operasi',
+    whatsapp: '081266554433',
+    meetingTitle: 'Review Program Kerja & Evaluasi Fasilitas Operasional PLTU',
+    meetingLocation: 'Ruang Rapat Lantai 2 Kantor Utama',
+    participantCount: 25,
+    organizationOrGuests: 'Manajemen & Tim Operasional PLTU',
+    notes: 'Kegiatan pagi: evaluasi fasilitas dan kesiapan unit.',
+    status: 'CONFIRMED',
+    createdAt: '2026-09-08T03:00:00.000Z'
+  },
+  {
+    id: 'b-adm-20260909-02',
+    bookingNumber: 'ADM-20260909-0002',
+    meetingDate: '2026-09-09',
+    startTime: '13:30',
+    durationHours: 2,
+    endTime: '15:30',
+    snackRingan: 'Snack Sehat Rebusan',
+    snackBerat: 'Soto',
+    makanSiang: 'Tidak',
+    bookerName: 'Admin SI APIN',
+    department: 'Operasi',
+    whatsapp: '081266554433',
+    meetingTitle: 'Sosialisasi Standar Pelayanan & Housekeeping Area PLTU Teluk Sirih',
+    meetingLocation: 'Ruang Rapat Lantai 1',
+    participantCount: 30,
+    organizationOrGuests: 'Tim Administrasi & Pelayanan Fasilitas',
+    notes: 'Kegiatan siang: snack sehat dan soto disiapkan pukul 13:15.',
+    status: 'CONFIRMED',
+    createdAt: '2026-09-08T03:15:00.000Z'
   }
 ];
 
@@ -516,43 +580,53 @@ async function fetchBookingsFromServer(initialSync: boolean = false) {
     const serverBookings: Booking[] = await res.json();
     if (!Array.isArray(serverBookings)) return;
 
-    // 1. Gather all local bookings currently available (cache or localStorage)
-    let localItems: Booking[] = cachedBookings || [];
-    if (localItems.length === 0) {
-      try {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed)) localItems = parsed;
-        }
-      } catch {
-        // Ignore JSON error
-      }
+    // 1. Gather ALL local bookings currently known (both in-memory cache and localStorage)
+    const localMap = new Map<string, Booking>();
+    if (Array.isArray(cachedBookings)) {
+      cachedBookings.forEach(b => { if (b && b.id) localMap.set(b.id, b); });
     }
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          parsed.forEach((b: Booking) => { if (b && b.id) localMap.set(b.id, b); });
+        }
+      }
+    } catch {
+      // Ignore JSON error
+    }
+    const localItems = Array.from(localMap.values());
 
     // 2. Identify any local-only bookings (e.g. submitted while offline or before sync)
     const serverIds = new Set(serverBookings.map(b => b.id));
     const localOnly = localItems.filter(b => !serverIds.has(b.id));
 
-    // 3. If there are local-only bookings, securely push them to the server immediately
+    // 3. Setup unified map starting with server bookings
+    const mergedMap = new Map<string, Booking>();
+    serverBookings.forEach(b => mergedMap.set(b.id, b));
+
+    // 4. If there are local-only bookings, securely push them to the server immediately
     if (localOnly.length > 0) {
-      fetch('/api/bookings/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bookings: localOnly })
-      }).catch(() => {});
+      try {
+        const syncRes = await fetch('/api/bookings/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ bookings: localOnly })
+        });
+        if (syncRes.ok) {
+          const syncData = await syncRes.json();
+          if (syncData.bookings && Array.isArray(syncData.bookings)) {
+            syncData.bookings.forEach((b: Booking) => mergedMap.set(b.id, b));
+          }
+        }
+      } catch {
+        // Fallback to local inclusion
+        localOnly.forEach(b => mergedMap.set(b.id, b));
+      }
     }
 
-    // 4. Non-destructive merge: union of server bookings and local bookings
-    const mergedMap = new Map<string, Booking>();
-    
-    // Server bookings first
-    serverBookings.forEach(b => mergedMap.set(b.id, b));
-    
-    // Always preserve local-only submitted bookings
-    localOnly.forEach(b => mergedMap.set(b.id, b));
-
-    // For overlapping bookings, keep the newest version or locally approved version
+    // 5. For overlapping bookings, keep the newest version
     localItems.forEach(localB => {
       const serverB = mergedMap.get(localB.id);
       if (serverB) {
@@ -610,10 +684,10 @@ function setupRealtimeSync() {
     // SSE not supported or blocked
   }
 
-  // 3. Fallback periodic polling every 2.5 seconds to guarantee interlock consistency
+  // 3. Fallback periodic polling every 1.5 seconds to guarantee interlock consistency
   setInterval(() => {
     fetchBookingsFromServer(false);
-  }, 2500);
+  }, 1500);
 
   // 4. Cross-tab BroadcastChannel listener
   if (broadcastChannel) {
@@ -770,6 +844,15 @@ export const bookingStorage = {
       console.warn('[SI APIN] Gagal sync booking ke server:', err);
     });
 
+    try {
+      activityLogger.log(
+        'BOOKING_CREATE',
+        `Pengajuan booking baru: ${newBooking.bookingNumber} - "${newBooking.meetingTitle}" (${newBooking.meetingLocation}, ${newBooking.meetingDate})`,
+        newBooking.bookingNumber,
+        { bookingId: newBooking.id, department: newBooking.department, bookerName: newBooking.bookerName }
+      );
+    } catch {}
+
     return newBooking;
   },
 
@@ -808,6 +891,17 @@ export const bookingStorage = {
       }).catch((err) => {
         console.warn('[SI APIN] Gagal sync status ke server:', err);
       });
+
+      try {
+        const action = newStatus === 'CONFIRMED' ? 'BOOKING_APPROVE' : (newStatus === 'CANCELLED' ? 'BOOKING_CANCEL' : 'BOOKING_UPDATE');
+        const statusLabel = newStatus === 'CONFIRMED' ? 'menyetujui (approve)' : (newStatus === 'CANCELLED' ? 'membatalkan' : `mengubah status menjadi ${newStatus}`);
+        activityLogger.log(
+          action,
+          `Admin ${statusLabel} booking ${updatedBooking.bookingNumber} ("${updatedBooking.meetingTitle}")`,
+          updatedBooking.bookingNumber,
+          { status: newStatus, notes, approvedBy }
+        );
+      } catch {}
     }
 
     return updatedBooking;
@@ -854,6 +948,15 @@ export const bookingStorage = {
       }).catch((err) => {
         console.warn('[SI APIN] Gagal sync edit persetujuan ke server:', err);
       });
+
+      try {
+        activityLogger.log(
+          'BOOKING_APPROVE',
+          `Admin menyetujui booking ${updatedBooking.bookingNumber} ("${updatedBooking.meetingTitle}") dengan penyesuaian jadwal (${updatedBooking.meetingDate} ${updatedBooking.startTime} - ${updatedBooking.endTime}, ${updatedBooking.meetingLocation})`,
+          updatedBooking.bookingNumber,
+          { approvedBy, approvalNotes }
+        );
+      } catch {}
     }
 
     return updatedBooking;
@@ -903,6 +1006,7 @@ export const bookingStorage = {
 
   delete(id: string): boolean {
     const all = this.getAll();
+    const target = all.find(b => b.id === id);
     const filtered = all.filter(b => b.id !== id);
     if (filtered.length !== all.length) {
       cachedBookings = filtered;
@@ -919,6 +1023,16 @@ export const bookingStorage = {
       }).catch((err) => {
         console.warn('[SI APIN] Gagal hapus di server:', err);
       });
+
+      try {
+        if (target) {
+          activityLogger.log(
+            'BOOKING_DELETE',
+            `Menghapus data permohonan booking ${target.bookingNumber} ("${target.meetingTitle}")`,
+            target.bookingNumber
+          );
+        }
+      } catch {}
 
       return true;
     }

@@ -52,14 +52,16 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   // Today Rekap for snack consumption
   const todayRekap = bookingStorage.getRekap(todayStr);
 
-  // Booking terdekat (upcoming sorted by date and time, today or future)
-  const sortedUpcoming = [...bookings]
+  // Prioritize today and future bookings for "Jadwal Mendatang", sorted chronologically
+  const upcomingOnly = bookings.filter(b => b.meetingDate >= todayStr);
+  const sortedUpcoming = (upcomingOnly.length > 0 ? upcomingOnly : bookings)
+    .slice()
     .sort((a, b) => {
       const dateA = `${a.meetingDate} ${a.startTime}`;
       const dateB = `${b.meetingDate} ${b.startTime}`;
       return dateA.localeCompare(dateB);
     })
-    .slice(0, 6);
+    .slice(0, 8);
 
   return (
     <div className="space-y-6">

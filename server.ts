@@ -11,10 +11,31 @@ const PORT = 3000;
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
+// CORS headers to enable seamless multi-origin & iframe communication
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
+});
+
+// Diagnostic request logger
+app.use((req, res, next) => {
+  if (req.url.startsWith('/api/') && req.url !== '/api/health') {
+    console.log(`[API ${req.method}] ${req.url}`);
+  }
+  next();
+});
+
 // Persistent JSON Storage Directory
 const DATA_DIR = path.join(process.cwd(), 'data');
 const BOOKINGS_FILE = path.join(DATA_DIR, 'bookings.json');
 const USERS_FILE = path.join(DATA_DIR, 'users.json');
+const LOGS_FILE = path.join(DATA_DIR, 'activity_logs.json');
+const LOGS_BACKUP_FILE = path.join(DATA_DIR, 'activity_logs_backup.json');
 
 // Ensure data directory exists
 if (!fs.existsSync(DATA_DIR)) {
@@ -195,6 +216,69 @@ const SEED_BOOKINGS = [
     notes: 'Sajikan teh hangat, kopi, dan air mineral.',
     status: 'CONFIRMED',
     createdAt: '2026-08-19T13:00:00.000Z'
+  },
+  {
+    id: 'b-keu-20260908-01',
+    bookingNumber: 'KSA-20260908-0001',
+    meetingDate: '2026-09-08',
+    startTime: '09:30',
+    durationHours: 2,
+    endTime: '11:30',
+    snackRingan: 'Snack Mix Basah Kering',
+    snackBerat: 'Tidak Ada',
+    makanSiang: 'Iya',
+    bookerName: 'Siti Rahmawati (Keuangan)',
+    department: 'Keuangan & Umum',
+    whatsapp: '081398765432',
+    meetingTitle: 'Rapat Koordinasi Anggaran & Evaluasi Keuangan Semester II',
+    meetingLocation: 'Room meeting KU lt. 1',
+    participantCount: 20,
+    organizationOrGuests: 'Tim Anggaran & Akuntansi PLTU Teluk Sirih',
+    notes: 'Mohon proyektor dan snack disiapkan sebelum jam 09:30.',
+    status: 'BOOKED',
+    createdAt: '2026-09-08T02:30:00.000Z'
+  },
+  {
+    id: 'b-adm-20260909-01',
+    bookingNumber: 'ADM-20260909-0001',
+    meetingDate: '2026-09-09',
+    startTime: '09:00',
+    durationHours: 2,
+    endTime: '11:00',
+    snackRingan: 'Snack Mix Basah Kering',
+    snackBerat: 'Tidak Ada',
+    makanSiang: 'Iya',
+    bookerName: 'Admin SI APIN',
+    department: 'Operasi',
+    whatsapp: '081266554433',
+    meetingTitle: 'Review Program Kerja & Evaluasi Fasilitas Operasional PLTU',
+    meetingLocation: 'Ruang Rapat Lantai 2 Kantor Utama',
+    participantCount: 25,
+    organizationOrGuests: 'Manajemen & Tim Operasional PLTU',
+    notes: 'Kegiatan pagi: evaluasi fasilitas dan kesiapan unit.',
+    status: 'CONFIRMED',
+    createdAt: '2026-09-08T03:00:00.000Z'
+  },
+  {
+    id: 'b-adm-20260909-02',
+    bookingNumber: 'ADM-20260909-0002',
+    meetingDate: '2026-09-09',
+    startTime: '13:30',
+    durationHours: 2,
+    endTime: '15:30',
+    snackRingan: 'Snack Sehat Rebusan',
+    snackBerat: 'Soto',
+    makanSiang: 'Tidak',
+    bookerName: 'Admin SI APIN',
+    department: 'Operasi',
+    whatsapp: '081266554433',
+    meetingTitle: 'Sosialisasi Standar Pelayanan & Housekeeping Area PLTU Teluk Sirih',
+    meetingLocation: 'Ruang Rapat Lantai 1',
+    participantCount: 30,
+    organizationOrGuests: 'Tim Administrasi & Pelayanan Fasilitas',
+    notes: 'Kegiatan siang: snack sehat dan soto disiapkan pukul 13:15.',
+    status: 'CONFIRMED',
+    createdAt: '2026-09-08T03:15:00.000Z'
   }
 ];
 
@@ -353,17 +437,33 @@ app.post('/api/bookings/sync', (req, res) => {
   }
 
   const current = readBookings();
-  const currentIds = new Set(current.map(b => b.id));
-  
-  // Merge client bookings with server bookings
-  const newItems = bookings.filter(b => !currentIds.has(b.id));
-  if (newItems.length > 0) {
-    const merged = [...newItems, ...current];
+  const currentMap = new Map<string, any>();
+  current.forEach((b) => currentMap.set(b.id, b));
+
+  let changed = false;
+  bookings.forEach((incoming) => {
+    if (!incoming || !incoming.id) return;
+    const existing = currentMap.get(incoming.id);
+    if (!existing) {
+      currentMap.set(incoming.id, incoming);
+      changed = true;
+    } else {
+      // If incoming has newer status or timestamp, update it
+      const existingTime = new Date(existing.updatedAt || existing.createdAt || 0).getTime();
+      const incomingTime = new Date(incoming.updatedAt || incoming.createdAt || 0).getTime();
+      if (incomingTime >= existingTime && JSON.stringify(existing) !== JSON.stringify(incoming)) {
+        currentMap.set(incoming.id, { ...existing, ...incoming });
+        changed = true;
+      }
+    }
+  });
+
+  const merged = Array.from(currentMap.values());
+  if (changed) {
     writeBookings(merged);
-    return res.json({ synced: newItems.length, total: merged.length });
   }
 
-  res.json({ synced: 0, total: current.length });
+  res.json({ success: true, count: merged.length, bookings: merged });
 });
 
 // ==========================================
@@ -371,9 +471,53 @@ app.post('/api/bookings/sync', (req, res) => {
 // ==========================================
 const SEED_USERS = [
   {
+    id: 'usr-admin-nofi',
+    username: 'nofi',
+    name: 'NOFI ZAHARA',
+    role: 'ADMIN',
+    department: 'Keuangan & Umum (Admin User 1)',
+    password: 'admin123',
+    avatarText: 'NZ',
+    lastLogin: '2026-08-20T08:00:00.000Z',
+    createdAt: '2026-01-01T00:00:00.000Z'
+  },
+  {
+    id: 'usr-admin-resna',
+    username: 'resna',
+    name: 'RESNA WATI',
+    role: 'ADMIN',
+    department: 'Keuangan & Umum (Admin User 2)',
+    password: 'admin123',
+    avatarText: 'RW',
+    lastLogin: '2026-08-20T08:00:00.000Z',
+    createdAt: '2026-01-01T00:00:00.000Z'
+  },
+  {
+    id: 'usr-admin-deri',
+    username: 'deri',
+    name: 'DERI TIALIS PERISTIAWAN',
+    role: 'ADMIN',
+    department: 'Sistem Informasi & TI (Admin Aplikasi 1)',
+    password: 'admin123',
+    avatarText: 'DP',
+    lastLogin: '2026-08-20T08:00:00.000Z',
+    createdAt: '2026-01-01T00:00:00.000Z'
+  },
+  {
+    id: 'usr-admin-yuda',
+    username: 'yuda',
+    name: 'YUDA PUTRA UTAMA',
+    role: 'ADMIN',
+    department: 'Sistem Informasi & TI (Admin Aplikasi 2)',
+    password: 'admin123',
+    avatarText: 'YP',
+    lastLogin: '2026-08-20T08:00:00.000Z',
+    createdAt: '2026-01-01T00:00:00.000Z'
+  },
+  {
     id: 'usr-admin',
     username: 'admin',
-    name: 'Administrator (Admin Si APIN / Konsumsi)',
+    name: 'Administrator Si APIN (Master)',
     role: 'ADMIN',
     department: 'Keuangan & Umum',
     password: 'admin123',
@@ -490,7 +634,21 @@ function readUsers(): any[] {
     }
     const raw = fs.readFileSync(USERS_FILE, 'utf-8');
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : SEED_USERS;
+    if (!Array.isArray(parsed)) return SEED_USERS;
+
+    let modified = false;
+    SEED_USERS.forEach(seed => {
+      const exists = parsed.some(p => p.username.toLowerCase() === seed.username.toLowerCase());
+      if (!exists) {
+        parsed.unshift(seed);
+        modified = true;
+      }
+    });
+
+    if (modified) {
+      fs.writeFileSync(USERS_FILE, JSON.stringify(parsed, null, 2), 'utf-8');
+    }
+    return parsed;
   } catch {
     return SEED_USERS;
   }
@@ -516,6 +674,185 @@ app.post('/api/users/sync', (req, res) => {
     return res.json({ success: true, count: users.length });
   }
   res.status(400).json({ error: 'Array users dibutuhkan' });
+});
+
+// ==========================================
+// ACTIVITY AUDIT LOGS ENDPOINTS
+// ==========================================
+const SEED_LOGS = [
+  {
+    id: 'log-001',
+    timestamp: '2026-09-08T02:25:00.000Z',
+    userId: 'usr-ku',
+    userName: 'PIC Keuangan & Umum',
+    userDepartment: 'Keuangan & Umum',
+    userRole: 'USER',
+    action: 'LOGIN',
+    details: 'Berhasil login ke sistem SI APIN dari IP Internal PLTU'
+  },
+  {
+    id: 'log-002',
+    timestamp: '2026-09-08T02:30:00.000Z',
+    userId: 'usr-ku',
+    userName: 'PIC Keuangan & Umum',
+    userDepartment: 'Keuangan & Umum',
+    userRole: 'USER',
+    action: 'BOOKING_CREATE',
+    targetId: 'KSA-20260908-0001',
+    details: 'Mengajukan booking baru: "Rapat Koordinasi Anggaran & Evaluasi Keuangan Semester II" (Room meeting KU lt. 1)'
+  },
+  {
+    id: 'log-003',
+    timestamp: '2026-09-08T02:50:00.000Z',
+    userId: 'usr-admin',
+    userName: 'Administrator (Admin Si APIN)',
+    userDepartment: 'Administrasi',
+    userRole: 'ADMIN',
+    action: 'LOGIN',
+    details: 'Login administrator ke portal pengelolaan fasilitas'
+  },
+  {
+    id: 'log-004',
+    timestamp: '2026-09-08T03:00:00.000Z',
+    userId: 'usr-admin',
+    userName: 'Administrator (Admin Si APIN)',
+    userDepartment: 'Administrasi',
+    userRole: 'ADMIN',
+    action: 'BOOKING_CREATE',
+    targetId: 'ADM-20260909-0001',
+    details: 'Membuat jadwal kegiatan: "Review Program Kerja & Evaluasi Fasilitas Operasional PLTU" (Ruang Rapat Lantai 2)'
+  },
+  {
+    id: 'log-005',
+    timestamp: '2026-09-08T03:15:00.000Z',
+    userId: 'usr-admin',
+    userName: 'Administrator (Admin Si APIN)',
+    userDepartment: 'Administrasi',
+    userRole: 'ADMIN',
+    action: 'BOOKING_CREATE',
+    targetId: 'ADM-20260909-0002',
+    details: 'Membuat jadwal kegiatan: "Sosialisasi Standar Pelayanan & Housekeeping Area PLTU Teluk Sirih" (Ruang Rapat Lantai 1)'
+  },
+  {
+    id: 'log-006',
+    timestamp: '2026-09-08T03:30:00.000Z',
+    userId: 'usr-admin',
+    userName: 'Administrator (Admin Si APIN)',
+    userDepartment: 'Administrasi',
+    userRole: 'ADMIN',
+    action: 'BOOKING_APPROVE',
+    targetId: 'OPR-20260820-0001',
+    details: 'Menyetujui permohonan booking OPR-20260820-0001 (Meeting Koordinasi Operasional Unit)'
+  }
+];
+
+function readActivityLogs(): any[] {
+  try {
+    if (!fs.existsSync(LOGS_FILE)) {
+      fs.writeFileSync(LOGS_FILE, JSON.stringify(SEED_LOGS, null, 2), 'utf-8');
+      return SEED_LOGS;
+    }
+    const raw = fs.readFileSync(LOGS_FILE, 'utf-8');
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : SEED_LOGS;
+  } catch {
+    return SEED_LOGS;
+  }
+}
+
+function writeActivityLogs(data: any[]): void {
+  try {
+    fs.writeFileSync(LOGS_FILE, JSON.stringify(data, null, 2), 'utf-8');
+    fs.writeFileSync(LOGS_BACKUP_FILE, JSON.stringify(data, null, 2), 'utf-8');
+    notifySSE('activity_logged');
+  } catch (err) {
+    console.error('Error writing activity logs:', err);
+  }
+}
+
+// GET activity logs with optional user or action filter
+app.get('/api/logs', (req, res) => {
+  const { user, action, limit } = req.query;
+  let logs = readActivityLogs();
+
+  if (user && typeof user === 'string') {
+    const cleanUser = user.toLowerCase();
+    logs = logs.filter(
+      (l) =>
+        (l.userId && l.userId.toLowerCase().includes(cleanUser)) ||
+        (l.userName && l.userName.toLowerCase().includes(cleanUser)) ||
+        (l.userDepartment && l.userDepartment.toLowerCase().includes(cleanUser))
+    );
+  }
+
+  if (action && typeof action === 'string') {
+    logs = logs.filter((l) => l.action === action);
+  }
+
+  // Sort newest first
+  logs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+  if (limit && !isNaN(Number(limit))) {
+    logs = logs.slice(0, Number(limit));
+  }
+
+  res.json(logs);
+});
+
+// POST new activity log entry
+app.post('/api/logs', (req, res) => {
+  const newLog = req.body;
+  if (!newLog || !newLog.action || !newLog.details) {
+    return res.status(400).json({ error: 'Data log tidak lengkap' });
+  }
+
+  const logEntry = {
+    id: newLog.id || `log-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+    timestamp: newLog.timestamp || new Date().toISOString(),
+    userId: newLog.userId || 'anonymous',
+    userName: newLog.userName || 'Pengguna',
+    userDepartment: newLog.userDepartment || '-',
+    userRole: newLog.userRole || 'USER',
+    action: newLog.action,
+    details: newLog.details,
+    targetId: newLog.targetId,
+    metadata: newLog.metadata
+  };
+
+  const current = readActivityLogs();
+  // Keep up to 2000 most recent logs
+  const updated = [logEntry, ...current].slice(0, 2000);
+  writeActivityLogs(updated);
+
+  res.status(201).json(logEntry);
+});
+
+// POST sync activity logs
+app.post('/api/logs/sync', (req, res) => {
+  const { logs } = req.body;
+  if (!Array.isArray(logs)) {
+    return res.status(400).json({ error: 'Array logs dibutuhkan' });
+  }
+
+  const current = readActivityLogs();
+  const currentIds = new Set(current.map((l) => l.id));
+  const newLogs = logs.filter((l) => l && l.id && !currentIds.has(l.id));
+
+  if (newLogs.length > 0) {
+    const merged = [...newLogs, ...current]
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+      .slice(0, 2000);
+    writeActivityLogs(merged);
+    return res.json({ success: true, count: merged.length, added: newLogs.length });
+  }
+
+  res.json({ success: true, count: current.length, added: 0 });
+});
+
+// DELETE clear activity logs (admin action)
+app.delete('/api/logs', (req, res) => {
+  writeActivityLogs(SEED_LOGS);
+  res.json({ success: true, message: 'Logs di-reset ke log awal' });
 });
 
 // ==========================================

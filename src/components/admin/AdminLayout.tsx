@@ -6,6 +6,7 @@ import { DashboardOverview } from './DashboardOverview';
 import { BookingManagement } from './BookingManagement';
 import { MeetingCalendar } from './MeetingCalendar';
 import { RekapKonsumsi } from './RekapKonsumsi';
+import { ActivityLogsView } from './ActivityLogsView';
 import { AdminSettings } from './AdminSettings';
 import { BookingDetailModal } from './BookingDetailModal';
 import { 
@@ -16,7 +17,8 @@ import {
   Calendar, 
   UtensilsCrossed, 
   Settings,
-  Bell
+  Bell,
+  ShieldCheck
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -126,6 +128,10 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
             <RekapKonsumsi
               onSelectBooking={(b) => setSelectedBookingForModal(b)}
             />
+          )}
+
+          {currentTab === 'logs' && (
+            <ActivityLogsView />
           )}
 
           {currentTab === 'pengaturan' && (

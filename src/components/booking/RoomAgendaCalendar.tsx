@@ -140,17 +140,14 @@ export const RoomAgendaCalendar: React.FC<RoomAgendaCalendarProps> = ({
   onTimeChange
 }) => {
   const [allBookings, setAllBookings] = useState<Booking[]>(() => bookingStorage.getAll());
-  const [inspectedDate, setInspectedDate] = useState<string>(bookingDate || getTodayDateString());
+  const initDateStr = bookingDate || getTodayDateString();
+  const [initYearNum, initMonthNum] = initDateStr.split('-').map(Number);
+  const [inspectedDate, setInspectedDate] = useState<string>(initDateStr);
   const [interlockAlert, setInterlockAlert] = useState<{ message: string; roomName: string } | null>(null);
 
   // Month navigation based on inspectedDate
-  const parsedDate = new Date(inspectedDate || getTodayDateString());
-  const [currentYear, setCurrentYear] = useState<number>(
-    isNaN(parsedDate.getFullYear()) ? 2026 : parsedDate.getFullYear()
-  );
-  const [currentMonth, setCurrentMonth] = useState<number>(
-    isNaN(parsedDate.getMonth()) ? 7 : parsedDate.getMonth()
-  );
+  const [currentYear, setCurrentYear] = useState<number>(initYearNum || 2026);
+  const [currentMonth, setCurrentMonth] = useState<number>(initMonthNum ? initMonthNum - 1 : 8);
 
   // Dragging and resizing state
   const [dragState, setDragState] = useState<DragState | null>(null);

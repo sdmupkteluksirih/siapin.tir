@@ -1,8 +1,52 @@
 [
   {
+    "id": "usr-admin-nofi",
+    "username": "nofi",
+    "name": "NOFI ZAHARA",
+    "role": "ADMIN",
+    "department": "Keuangan & Umum (Admin User 1)",
+    "password": "admin123",
+    "avatarText": "NZ",
+    "lastLogin": "2026-08-20T08:00:00.000Z",
+    "createdAt": "2026-01-01T00:00:00.000Z"
+  },
+  {
+    "id": "usr-admin-resna",
+    "username": "resna",
+    "name": "RESNA WATI",
+    "role": "ADMIN",
+    "department": "Keuangan & Umum (Admin User 2)",
+    "password": "admin123",
+    "avatarText": "RW",
+    "lastLogin": "2026-08-20T08:00:00.000Z",
+    "createdAt": "2026-01-01T00:00:00.000Z"
+  },
+  {
+    "id": "usr-admin-deri",
+    "username": "deri",
+    "name": "DERI TIALIS PERISTIAWAN",
+    "role": "ADMIN",
+    "department": "Sistem Informasi & TI (Admin Aplikasi 1)",
+    "password": "admin123",
+    "avatarText": "DP",
+    "lastLogin": "2026-08-20T08:00:00.000Z",
+    "createdAt": "2026-01-01T00:00:00.000Z"
+  },
+  {
+    "id": "usr-admin-yuda",
+    "username": "yuda",
+    "name": "YUDA PUTRA UTAMA",
+    "role": "ADMIN",
+    "department": "Sistem Informasi & TI (Admin Aplikasi 2)",
+    "password": "admin123",
+    "avatarText": "YP",
+    "lastLogin": "2026-08-20T08:00:00.000Z",
+    "createdAt": "2026-01-01T00:00:00.000Z"
+  },
+  {
     "id": "usr-admin",
     "username": "admin",
-    "name": "Administrator (Admin Si APIN / Konsumsi)",
+    "name": "Administrator Si APIN (Master)",
     "role": "ADMIN",
     "department": "Keuangan & Umum",
     "password": "admin123",
