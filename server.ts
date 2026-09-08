@@ -2,7 +2,6 @@ import express from 'express';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import { createServer as createViteServer } from 'vite';
 import { emailService } from './server/emailService';
 
 const app = express();
@@ -38,9 +37,13 @@ const USERS_FILE = path.join(DATA_DIR, 'users.json');
 const LOGS_FILE = path.join(DATA_DIR, 'activity_logs.json');
 const LOGS_BACKUP_FILE = path.join(DATA_DIR, 'activity_logs_backup.json');
 
-// Ensure data directory exists
-if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
+// Ensure data directory exists safely
+try {
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  }
+} catch (dirErr) {
+  console.warn('[Storage] Notice: Filesystem may be readonly in serverless runtime:', dirErr);
 }
 
 // Initial default corporate seed bookings
@@ -910,6 +913,7 @@ app.delete('/api/logs', (req, res) => {
 // ==========================================
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
+    const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa'

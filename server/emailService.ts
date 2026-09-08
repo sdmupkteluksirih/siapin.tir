@@ -31,7 +31,7 @@ const DEFAULT_CONFIG: EmailConfig = {
   enabled: true,
   senderEmail: process.env.GMAIL_USER || 'sdm.upkteluksirih@gmail.com',
   senderName: 'SI APIN - PLN UPK Teluk Sirih',
-  appPassword: process.env.GMAIL_APP_PASSWORD || 'zoxx cuni styv egyu',
+  appPassword: process.env.GMAIL_APP_PASSWORD || 'qgsm znlv lqed tmgt',
   adminRecipients: (process.env.ADMIN_NOTIFICATION_EMAILS || 'sdm.upkteluksirih@gmail.com')
     .split(',')
     .map(e => e.trim())
@@ -116,12 +116,14 @@ export class EmailService {
         this.config = {
           ...DEFAULT_CONFIG,
           ...parsed,
-          // Environment variables take precedence if set and config is empty
-          appPassword: parsed.appPassword || process.env.GMAIL_APP_PASSWORD || ''
+          // Environment variables or DEFAULT_CONFIG take precedence if set and config is empty
+          appPassword: parsed.appPassword || process.env.GMAIL_APP_PASSWORD || DEFAULT_CONFIG.appPassword || ''
         };
       } else {
         this.config = { ...DEFAULT_CONFIG };
-        fs.writeFileSync(CONFIG_FILE, JSON.stringify(this.config, null, 2), 'utf-8');
+        try {
+          fs.writeFileSync(CONFIG_FILE, JSON.stringify(this.config, null, 2), 'utf-8');
+        } catch {}
       }
     } catch {
       this.config = { ...DEFAULT_CONFIG };
