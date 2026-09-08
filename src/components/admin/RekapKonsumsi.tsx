@@ -16,7 +16,11 @@ import {
   Utensils, 
   FileSpreadsheet,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  CalendarRange,
+  X,
+  Filter,
+  Check
 } from 'lucide-react';
 
 interface RekapKonsumsiProps {
@@ -28,6 +32,12 @@ export const RekapKonsumsi: React.FC<RekapKonsumsiProps> = ({
 }) => {
   const [selectedDate, setSelectedDate] = useState<string>(getTodayDateString());
   const [printMode, setPrintMode] = useState<'rekap' | 'detail' | null>(null);
+
+  // Export CSV Modal state with date range
+  const [isExportModalOpen, setIsExportModalOpen] = useState<boolean>(false);
+  const [exportStartDate, setExportStartDate] = useState<string>(selectedDate);
+  const [exportEndDate, setExportEndDate] = useState<string>(selectedDate);
+  const [exportStatusFilter, setExportStatusFilter] = useState<'ALL' | 'CONFIRMED' | 'ACTIVE'>('ALL');
 
   const rekap: RekapHarian = bookingStorage.getRekap(selectedDate);
   const activeBookings = rekap.bookings.filter(b => b.status !== 'CANCELLED');
@@ -57,32 +67,126 @@ export const RekapKonsumsi: React.FC<RekapKonsumsiProps> = ({
     }, 100);
   };
 
-  const handleExportCSV = () => {
-    const headers = ['Jam', 'Meeting', 'PIC', 'Divisi', 'Tamu/Organisasi', 'Lokasi', 'Peserta', 'Snack Ringan', 'Snack Berat', 'Makan Siang', 'Status'];
-    const rows = rekap.bookings.map(b => [
-      `"${b.startTime} - ${b.endTime}"`,
+  const handleOpenExportModal = () => {
+    setExportStartDate(selectedDate);
+    setExportEndDate(selectedDate);
+    setIsExportModalOpen(true);
+  };
+
+  // Quick preset dates for Export
+  const handlePresetExport = (preset: 'selected' | 'today' | '7days' | 'month' | 'all') => {
+    const today = getTodayDateString();
+    if (preset === 'selected') {
+      setExportStartDate(selectedDate);
+      setExportEndDate(selectedDate);
+    } else if (preset === 'today') {
+      setExportStartDate(today);
+      setExportEndDate(today);
+    } else if (preset === '7days') {
+      const d = new Date();
+      d.setDate(d.getDate() - 6);
+      setExportStartDate(d.toISOString().split('T')[0]);
+      setExportEndDate(today);
+    } else if (preset === 'month') {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
+      setExportStartDate(`${year}-${month}-01`);
+      setExportEndDate(`${year}-${month}-${String(lastDay).padStart(2, '0')}`);
+    } else if (preset === 'all') {
+      const all = bookingStorage.getAll();
+      if (all.length > 0) {
+        const sorted = all.map(b => b.meetingDate).sort();
+        setExportStartDate(sorted[0]);
+        setExportEndDate(sorted[sorted.length - 1]);
+      }
+    }
+  };
+
+  // Matching bookings in export range
+  const allBookings = bookingStorage.getAll();
+  const exportBookings = allBookings
+    .filter(b => {
+      if (exportStartDate && b.meetingDate < exportStartDate) return false;
+      if (exportEndDate && b.meetingDate > exportEndDate) return false;
+      if (exportStatusFilter === 'CONFIRMED' && b.status !== 'CONFIRMED') return false;
+      if (exportStatusFilter === 'ACTIVE' && b.status === 'CANCELLED') return false;
+      return true;
+    })
+    .sort((a, b) => {
+      if (a.meetingDate !== b.meetingDate) {
+        return a.meetingDate.localeCompare(b.meetingDate);
+      }
+      return a.startTime.localeCompare(b.startTime);
+    });
+
+  const exportTotalPeserta = exportBookings.reduce((acc, b) => acc + (b.status !== 'CANCELLED' ? b.participantCount : 0), 0);
+  const exportTotalMakanSiang = exportBookings.filter(b => b.status !== 'CANCELLED' && b.makanSiang === 'Iya').reduce((acc, b) => acc + b.participantCount, 0);
+
+  const executeExportCSV = () => {
+    if (exportBookings.length === 0) {
+      alert('Tidak ada data meeting yang sesuai dengan rentang tanggal dan filter yang dipilih.');
+      return;
+    }
+
+    const headers = [
+      'No',
+      'Nomor Booking',
+      'Tanggal Meeting',
+      'Jam Mulai',
+      'Jam Selesai',
+      'Durasi (Jam)',
+      'Nama Meeting',
+      'PIC / Pemesan',
+      'Divisi / Bagian',
+      'No. WhatsApp',
+      'Tamu / Organisasi Luar',
+      'Lokasi Ruangan',
+      'Jumlah Peserta',
+      'Snack Ringan',
+      'Snack Berat',
+      'Makan Siang',
+      'Catatan',
+      'Status'
+    ];
+
+    const rows = exportBookings.map((b, idx) => [
+      idx + 1,
+      `"${b.bookingNumber}"`,
+      `"${b.meetingDate}"`,
+      `"${b.startTime}"`,
+      `"${b.endTime}"`,
+      b.durationHours,
       `"${b.meetingTitle.replace(/"/g, '""')}"`,
       `"${b.bookerName.replace(/"/g, '""')}"`,
       `"${b.department.replace(/"/g, '""')}"`,
+      `"${b.whatsapp}"`,
       `"${(b.organizationOrGuests || '-').replace(/"/g, '""')}"`,
       `"${b.meetingLocation.replace(/"/g, '""')}"`,
       b.participantCount,
       `"${b.snackRingan}"`,
       `"${b.snackBerat}"`,
       `"${b.makanSiang}"`,
+      `"${(b.notes || '-').replace(/"/g, '""')}"`,
       `"${b.status}"`
     ]);
 
-    const csvContent = 'data:text/csv;charset=utf-8,' + 
-      [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
-
-    const encodedUri = encodeURI(csvContent);
+    // UTF-8 BOM (\uFEFF) ensures Excel handles characters properly
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(e => e.join(','))].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `Rekap_Konsumsi_${selectedDate}.csv`);
+    link.setAttribute('href', url);
+    const filename = exportStartDate === exportEndDate
+      ? `Rekap_Konsumsi_${exportStartDate}.csv`
+      : `Rekap_Konsumsi_${exportStartDate}_sd_${exportEndDate}.csv`;
+    link.setAttribute('download', filename);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    setIsExportModalOpen(false);
   };
 
   return (
@@ -151,7 +255,7 @@ export const RekapKonsumsi: React.FC<RekapKonsumsiProps> = ({
             <button
               type="button"
               id="btn-export-csv"
-              onClick={handleExportCSV}
+              onClick={handleOpenExportModal}
               className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-indigo-600 text-xs font-bold text-white shadow-xs transition-colors cursor-pointer"
             >
               <Download className="w-4 h-4" />
@@ -553,6 +657,193 @@ export const RekapKonsumsi: React.FC<RekapKonsumsiProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Export CSV Range Modal Dialog */}
+      {isExportModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-lg w-full overflow-hidden animate-in zoom-in-95 duration-150">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-slate-900 to-indigo-950 p-5 text-white flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-300">
+                  <FileSpreadsheet className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-white">Export Data Rekap ke CSV</h3>
+                  <p className="text-xs text-slate-300">Tarik data meeting & konsumsi berdasarkan rentang tanggal</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsExportModalOpen(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-5 sm:p-6 space-y-5 text-slate-700 text-sm">
+              {/* Preset Buttons */}
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2 block">
+                  Pilihan Cepat Rentang Tanggal
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handlePresetExport('today')}
+                    className="px-3 py-1.5 rounded-lg border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50 text-xs font-semibold text-slate-700 transition-colors cursor-pointer"
+                  >
+                    Hari Ini
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handlePresetExport('selected')}
+                    className="px-3 py-1.5 rounded-lg border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50 text-xs font-semibold text-slate-700 transition-colors cursor-pointer"
+                  >
+                    Hari Terpilih ({selectedDate})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handlePresetExport('7days')}
+                    className="px-3 py-1.5 rounded-lg border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50 text-xs font-semibold text-slate-700 transition-colors cursor-pointer"
+                  >
+                    7 Hari Terakhir
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handlePresetExport('month')}
+                    className="px-3 py-1.5 rounded-lg border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50 text-xs font-semibold text-slate-700 transition-colors cursor-pointer"
+                  >
+                    Bulan Ini
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handlePresetExport('all')}
+                    className="px-3 py-1.5 rounded-lg border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50 text-xs font-semibold text-slate-700 transition-colors cursor-pointer"
+                  >
+                    Semua Data
+                  </button>
+                </div>
+              </div>
+
+              {/* Date Range Inputs */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    Dari Tanggal <span className="text-rose-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="date"
+                      value={exportStartDate}
+                      onChange={(e) => setExportStartDate(e.target.value)}
+                      className="w-full px-3 py-2 text-xs font-bold border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    Sampai Tanggal <span className="text-rose-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="date"
+                      value={exportEndDate}
+                      min={exportStartDate}
+                      onChange={(e) => setExportEndDate(e.target.value)}
+                      className="w-full px-3 py-2 text-xs font-bold border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Filter Status */}
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2 block flex items-center gap-1.5">
+                  <Filter className="w-3.5 h-3.5" />
+                  Filter Status Booking
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setExportStatusFilter('ALL')}
+                    className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all text-center cursor-pointer ${
+                      exportStatusFilter === 'ALL'
+                        ? 'border-indigo-600 bg-indigo-50 text-indigo-700 shadow-2xs'
+                        : 'border-slate-200 hover:bg-slate-50 text-slate-600'
+                    }`}
+                  >
+                    Semua Status
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setExportStatusFilter('ACTIVE')}
+                    className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all text-center cursor-pointer ${
+                      exportStatusFilter === 'ACTIVE'
+                        ? 'border-indigo-600 bg-indigo-50 text-indigo-700 shadow-2xs'
+                        : 'border-slate-200 hover:bg-slate-50 text-slate-600'
+                    }`}
+                  >
+                    Aktif Saja
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setExportStatusFilter('CONFIRMED')}
+                    className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all text-center cursor-pointer ${
+                      exportStatusFilter === 'CONFIRMED'
+                        ? 'border-indigo-600 bg-indigo-50 text-indigo-700 shadow-2xs'
+                        : 'border-slate-200 hover:bg-slate-50 text-slate-600'
+                    }`}
+                  >
+                    Disetujui Saja
+                  </button>
+                </div>
+              </div>
+
+              {/* Data Summary Preview */}
+              <div className="p-3.5 bg-indigo-50/70 border border-indigo-100 rounded-xl flex items-center justify-between text-xs">
+                <div>
+                  <span className="font-semibold text-slate-600 block">Total Data Ditemukan:</span>
+                  <span className="text-slate-900 font-extrabold text-sm">
+                    {exportBookings.length} Jadwal Meeting
+                  </span>
+                </div>
+                <div className="text-right">
+                  <span className="font-semibold text-slate-600 block">Total Peserta & Konsumsi:</span>
+                  <span className="text-indigo-700 font-bold">
+                    {exportTotalPeserta} Peserta • {exportTotalMakanSiang} Makan Siang
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="bg-slate-50 px-5 py-4 border-t border-slate-200 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => setIsExportModalOpen(false)}
+                className="px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-100 text-xs font-bold text-slate-700 transition-colors cursor-pointer"
+              >
+                Batal
+              </button>
+
+              <button
+                type="button"
+                id="btn-confirm-export-csv"
+                onClick={executeExportCSV}
+                disabled={exportBookings.length === 0}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-xs font-bold text-white shadow-md transition-all cursor-pointer"
+              >
+                <Download className="w-4 h-4" />
+                <span>Unduh File CSV ({exportBookings.length})</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

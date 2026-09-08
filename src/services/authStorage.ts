@@ -98,7 +98,7 @@ export const DEFAULT_USERS: UserAccount[] = [
   {
     id: 'usr-proc',
     username: 'pengadaan',
-    name: 'PIC Pengadaan / Logistik',
+    name: 'PIC Pengadaan',
     role: 'USER',
     department: 'Pengadaan',
     password: 'user123',
