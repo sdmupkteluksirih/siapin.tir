@@ -166,10 +166,15 @@ export class EmailService {
     }
 
     return nodemailer.createTransport({
-      service: 'gmail',
+      host: 'smtp.gmail.com',
+      port: 465,
+      secure: true, // SSL
       auth: {
         user: sender,
         pass: rawPass
+      },
+      tls: {
+        rejectUnauthorized: false
       }
     });
   }
@@ -621,7 +626,12 @@ export class EmailService {
 
       return { success: true, message: `Email uji coba berhasil dikirim ke ${targetEmail}` };
     } catch (err: any) {
-      const errMsg = err?.message || 'Gagal mengirim email';
+      let errMsg = err?.message || 'Gagal mengirim email';
+      if (errMsg.includes('Invalid login') || errMsg.includes('535-5.7.8') || errMsg.includes('Username and Password not accepted')) {
+        errMsg = 'Google menolak sandi (Invalid Login 535): Pastikan Verifikasi 2 Langkah akun Gmail aktif dan 16 karakter Sandi Aplikasi dibuat khusus untuk akun sdm.upkteluksirih@gmail.com di myaccount.google.com/apppasswords.';
+      } else if (errMsg.includes('ETIMEDOUT') || errMsg.includes('ECONNREFUSED')) {
+        errMsg = 'Gagal terhubung ke server Gmail (Koneksi Timeout). Coba ulangi beberapa saat lagi.';
+      }
       this.recordLog({
         type: 'TEST_EMAIL',
         to: [targetEmail],

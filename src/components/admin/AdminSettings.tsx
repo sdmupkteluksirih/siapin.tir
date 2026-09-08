@@ -755,7 +755,7 @@ export const AdminSettings: React.FC = () => {
                 <span>Sandi Aplikasi Google (16 Karakter)</span>
                 {emailConfig.hasPassword && (
                   <span className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
-                    <Check className="w-3 h-3" /> Sandi aktif ada di server
+                    <Check className="w-3 h-3" /> Sandi aktif tersimpan ({emailConfig.appPasswordPreview})
                   </span>
                 )}
               </label>
@@ -764,7 +764,7 @@ export const AdminSettings: React.FC = () => {
                   type={showInputAppPassword ? 'text' : 'password'}
                   value={inputAppPassword}
                   onChange={(e) => setInputAppPassword(e.target.value)}
-                  placeholder={emailConfig.hasPassword ? '•••• •••• •••• •••• (Ketik untuk mengganti)' : 'Contoh: abcd efgh ijkl mnop'}
+                  placeholder={emailConfig.hasPassword ? `${emailConfig.appPasswordPreview} (Ketik sandi baru jika ingin mengganti)` : 'Contoh: abcd efgh ijkl mnop'}
                   className="w-full px-3.5 py-2.5 pr-10 text-xs rounded-xl border border-slate-300 bg-white focus:outline-hidden focus:ring-2 focus:ring-sky-500 font-mono text-slate-900 placeholder-slate-400"
                 />
                 <button
@@ -775,8 +775,10 @@ export const AdminSettings: React.FC = () => {
                   {showInputAppPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-              <p className="text-[11px] text-slate-400 mt-1">
-                Sandi aplikasi disimpan secara aman di backend server untuk autentikasi SMTP Gmail.
+              <p className="text-[11px] text-slate-500 mt-1">
+                {emailConfig.hasPassword 
+                  ? 'Sandi 16 karakter telah tersimpan di server. Anda tidak perlu memasukkannya lagi kecuali jika baru saja membuat sandi baru di Google.' 
+                  : 'Salin 16 huruf dari Google App Passwords lalu klik "Simpan Konfigurasi Email".'}
               </p>
             </div>
 
