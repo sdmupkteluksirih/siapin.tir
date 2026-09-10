@@ -21,7 +21,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   const [errorMsg, setErrorMsg] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
 
@@ -32,8 +32,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
 
     setIsLoading(true);
 
-    setTimeout(() => {
-      const res = authStorage.login(username.trim(), password.trim());
+    try {
+      const res = await authStorage.loginAsync(username.trim(), password.trim());
       setIsLoading(false);
 
       if (res.success && res.user) {
@@ -41,7 +41,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       } else {
         setErrorMsg(res.error || 'User ID atau Kata Sandi tidak cocok.');
       }
-    }, 250);
+    } catch {
+      setIsLoading(false);
+      setErrorMsg('Terjadi kesalahan verifikasi akun. Silakan coba lagi.');
+    }
   };
 
   return (

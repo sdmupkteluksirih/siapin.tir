@@ -1,0 +1,114 @@
+[
+  {
+    "id": "log-1789024889563-ctnv7",
+    "timestamp": "2026-09-10T07:21:29.563Z",
+    "userId": "operasi",
+    "userName": "PIC Operasi",
+    "userDepartment": "Operasi",
+    "userRole": "USER",
+    "action": "PASSWORD_RESET",
+    "details": "Password untuk akun PIC Operasi (operasi) berhasil diperbarui/direset",
+    "targetId": "usr-ops"
+  },
+  {
+    "id": "log-1789024886445-j92zo",
+    "timestamp": "2026-09-10T07:21:26.445Z",
+    "userId": "operasi",
+    "userName": "PIC Operasi",
+    "userDepartment": "Operasi",
+    "userRole": "USER",
+    "action": "LOGIN",
+    "details": "User PIC Operasi (Operasi) berhasil login ke sistem",
+    "targetId": "operasi"
+  },
+  {
+    "id": "log-1789024881445-5fxb5",
+    "timestamp": "2026-09-10T07:21:21.445Z",
+    "userId": "operasi",
+    "userName": "PIC Operasi",
+    "userDepartment": "Operasi",
+    "userRole": "USER",
+    "action": "PASSWORD_RESET",
+    "details": "Password untuk akun PIC Operasi (operasi) berhasil diperbarui/direset",
+    "targetId": "usr-ops"
+  },
+  {
+    "id": "log-1789015468645-q5yip",
+    "timestamp": "2026-09-10T04:44:28.645Z",
+    "userId": "admin",
+    "userName": "Administrator Si APIN (Master)",
+    "userDepartment": "Keuangan & Umum",
+    "userRole": "ADMIN",
+    "action": "LOGIN",
+    "details": "User Administrator Si APIN (Master) (Keuangan & Umum) berhasil login ke sistem",
+    "targetId": "admin",
+    "metadata": {
+      "role": "ADMIN",
+      "department": "Keuangan & Umum"
+    }
+  },
+  {
+    "id": "log-001",
+    "timestamp": "2026-09-08T02:25:00.000Z",
+    "userId": "usr-ku",
+    "userName": "PIC Keuangan & Umum",
+    "userDepartment": "Keuangan & Umum",
+    "userRole": "USER",
+    "action": "LOGIN",
+    "details": "Berhasil login ke sistem SI APIN dari IP Internal PLTU"
+  },
+  {
+    "id": "log-002",
+    "timestamp": "2026-09-08T02:30:00.000Z",
+    "userId": "usr-ku",
+    "userName": "PIC Keuangan & Umum",
+    "userDepartment": "Keuangan & Umum",
+    "userRole": "USER",
+    "action": "BOOKING_CREATE",
+    "targetId": "KSA-20260908-0001",
+    "details": "Mengajukan booking baru: \"Rapat Koordinasi Anggaran & Evaluasi Keuangan Semester II\" (Room meeting KU lt. 1)"
+  },
+  {
+    "id": "log-003",
+    "timestamp": "2026-09-08T02:50:00.000Z",
+    "userId": "usr-admin",
+    "userName": "Administrator (Admin Si APIN)",
+    "userDepartment": "Administrasi",
+    "userRole": "ADMIN",
+    "action": "LOGIN",
+    "details": "Login administrator ke portal pengelolaan fasilitas"
+  },
+  {
+    "id": "log-004",
+    "timestamp": "2026-09-08T03:00:00.000Z",
+    "userId": "usr-admin",
+    "userName": "Administrator (Admin Si APIN)",
+    "userDepartment": "Administrasi",
+    "userRole": "ADMIN",
+    "action": "BOOKING_CREATE",
+    "targetId": "ADM-20260909-0001",
+    "details": "Membuat jadwal kegiatan: \"Review Program Kerja & Evaluasi Fasilitas Operasional PLTU\" (Ruang Rapat Lantai 2)"
+  },
+  {
+    "id": "log-005",
+    "timestamp": "2026-09-08T03:15:00.000Z",
+    "userId": "usr-admin",
+    "userName": "Administrator (Admin Si APIN)",
+    "userDepartment": "Administrasi",
+    "userRole": "ADMIN",
+    "action": "BOOKING_CREATE",
+    "targetId": "ADM-20260909-0002",
+    "details": "Membuat jadwal kegiatan: \"Sosialisasi Standar Pelayanan & Housekeeping Area PLTU Teluk Sirih\" (Ruang Rapat Lantai 1)"
+  },
+  {
+    "id": "log-006",
+    "timestamp": "2026-09-08T03:30:00.000Z",
+    "userId": "usr-admin",
+    "userName": "Administrator (Admin Si APIN)",
+    "userDepartment": "Administrasi",
+    "userRole": "ADMIN",
+    "action": "BOOKING_APPROVE",
+    "targetId": "OPR-20260820-0001",
+    "details": "Menyetujui permohonan booking OPR-20260820-0001 (Meeting Koordinasi Operasional Unit)"
+  }
+]

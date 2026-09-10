@@ -187,7 +187,21 @@ const authBroadcast = typeof window !== 'undefined' && 'BroadcastChannel' in win
   ? new BroadcastChannel('siapin_auth_sync_channel')
   : null;
 
-let cachedUsers: UserAccount[] | null = null;
+function getLocalStoredUsers(): UserAccount[] {
+  if (typeof window === 'undefined') return DEFAULT_USERS;
+  try {
+    const stored = localStorage.getItem(USERS_STORAGE_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch {}
+  return DEFAULT_USERS;
+}
+
+let cachedUsers: UserAccount[] | null = typeof window !== 'undefined' ? getLocalStoredUsers() : null;
 let isAuthSyncInitialized = false;
 
 function notifyAuthSubscribers() {
@@ -207,32 +221,66 @@ async function fetchUsersFromServer() {
     const res = await fetch('/api/users');
     if (!res.ok) return;
     const serverUsers: UserAccount[] = await res.json();
-    if (!Array.isArray(serverUsers)) return;
+    if (!Array.isArray(serverUsers) || serverUsers.length === 0) return;
 
-    const currentStr = JSON.stringify(cachedUsers || []);
-    const serverStr = JSON.stringify(serverUsers);
+    const localUsers = authStorage.getAllUsers();
 
-    if (currentStr !== serverStr) {
-      cachedUsers = serverUsers;
-      try {
-        localStorage.setItem(USERS_STORAGE_KEY, serverStr);
-      } catch {
-        // Ignore
+    // Smart merge: Never overwrite a user's custom changed password with a default seed password
+    let localHasCustomPasswords = false;
+    const mergedUsers = serverUsers.map(sUser => {
+      const localMatch = localUsers.find(
+        l => l.id === sUser.id || (l.username && l.username.toLowerCase() === sUser.username.toLowerCase())
+      );
+      if (localMatch) {
+        const defUser = DEFAULT_USERS.find(d => d.username.toLowerCase() === sUser.username.toLowerCase());
+        const defaultPass = defUser ? defUser.password : 'user123';
+
+        // If local user has custom password that differs from default, but server still has default, prioritize local!
+        if (localMatch.password !== defaultPass && sUser.password === defaultPass) {
+          localHasCustomPasswords = true;
+          return {
+            ...sUser,
+            password: localMatch.password
+          };
+        }
       }
-      notifyAuthSubscribers();
+      return sUser;
+    });
+
+    // Also include any local-only users
+    localUsers.forEach(lUser => {
+      if (!mergedUsers.some(m => m.id === lUser.id || (m.username && m.username.toLowerCase() === lUser.username.toLowerCase()))) {
+        mergedUsers.push(lUser);
+        localHasCustomPasswords = true;
+      }
+    });
+
+    cachedUsers = mergedUsers;
+    try {
+      localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(mergedUsers));
+    } catch {}
+    notifyAuthSubscribers();
+
+    // If local had custom passwords that server lacked, sync back to server so server is permanently updated
+    if (localHasCustomPasswords) {
+      syncUsersToServer(mergedUsers);
     }
   } catch {
     // Ignore network error
   }
 }
 
-function syncUsersToServer(users: UserAccount[]) {
+async function syncUsersToServer(users: UserAccount[]) {
   if (typeof window === 'undefined') return;
-  fetch('/api/users/sync', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ users })
-  }).catch(() => {});
+  try {
+    await fetch('/api/users/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ users })
+    });
+  } catch (err) {
+    console.warn('Gagal sinkronisasi data user ke server:', err);
+  }
 }
 
 function setupAuthRealtimeSync() {
@@ -240,6 +288,19 @@ function setupAuthRealtimeSync() {
   isAuthSyncInitialized = true;
 
   fetchUsersFromServer();
+
+  // Listen to SSE events for users_changed
+  try {
+    const eventSource = new EventSource('/api/events');
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === 'users_changed') {
+          fetchUsersFromServer();
+        }
+      } catch {}
+    };
+  } catch {}
 
   if (authBroadcast) {
     authBroadcast.onmessage = (event) => {
@@ -404,6 +465,59 @@ export const authStorage = {
     return { success: true, user: updatedUser };
   },
 
+  async loginAsync(username: string, password: string): Promise<{ success: boolean; user?: UserAccount; error?: string }> {
+    const cleanUsername = username.trim();
+    const cleanPassword = password.trim();
+
+    if (!cleanUsername || !cleanPassword) {
+      return { success: false, error: 'User ID dan Kata Sandi wajib diisi.' };
+    }
+
+    // 1. Try authoritative server login
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: cleanUsername, password: cleanPassword })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.user) {
+          localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(data.user));
+          const currentUsers = this.getAllUsers();
+          const updatedUsers = currentUsers.map(u =>
+            (u.id === data.user.id || (u.username && u.username.toLowerCase() === data.user.username.toLowerCase())) ? data.user : u
+          );
+          cachedUsers = updatedUsers;
+          try {
+            localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(updatedUsers));
+          } catch {}
+          notifyAuthSubscribers();
+          return { success: true, user: data.user };
+        }
+      } else if (res.status === 401) {
+        // Fallback check if client storage has a valid match
+        const localRes = this.login(cleanUsername, cleanPassword);
+        if (localRes.success && localRes.user) {
+          // Sync to server so server learns the new password
+          fetch('/api/users/reset-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: localRes.user.id, newPassword: cleanPassword })
+          }).catch(() => {});
+          return localRes;
+        }
+        const errJson = await res.json().catch(() => ({}));
+        return { success: false, error: errJson.error || 'User ID atau Kata Sandi tidak cocok.' };
+      }
+    } catch {
+      // Offline fallback
+    }
+
+    // 2. Client-side login fallback
+    return this.login(cleanUsername, cleanPassword);
+  },
+
   logout(): void {
     if (typeof window !== 'undefined') {
       const current = this.getCurrentUser();
@@ -426,12 +540,13 @@ export const authStorage = {
   resetPassword(userId: string, newPassword: string): boolean {
     const users = this.getAllUsers();
     let found = false;
+    const cleanPass = newPassword.trim();
     const updated = users.map(u => {
-      if (u.id === userId || u.username.toLowerCase() === userId.toLowerCase()) {
+      if (u.id === userId || (u.username && u.username.toLowerCase() === userId.toLowerCase())) {
         found = true;
         return {
           ...u,
-          password: newPassword
+          password: cleanPass
         };
       }
       return u;
@@ -439,21 +554,77 @@ export const authStorage = {
 
     if (found) {
       cachedUsers = updated;
-      localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(updated));
+      try {
+        localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(updated));
+      } catch {}
+
       // If the current logged in user was reset, update their session too
       const current = this.getCurrentUser();
-      if (current && (current.id === userId || current.username.toLowerCase() === userId.toLowerCase())) {
-        const updatedCurrent = { ...current, password: newPassword };
-        localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(updatedCurrent));
+      if (current && (current.id === userId || (current.username && current.username.toLowerCase() === userId.toLowerCase()))) {
+        const updatedCurrent = { ...current, password: cleanPass };
+        try {
+          localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(updatedCurrent));
+        } catch {}
       }
       notifyAuthSubscribers();
-      syncUsersToServer(updated);
+
+      // Trigger immediate server updates
+      if (typeof window !== 'undefined') {
+        fetch('/api/users/reset-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId, newPassword: cleanPass })
+        }).then(res => {
+          if (!res.ok) {
+            syncUsersToServer(updated);
+          }
+        }).catch(() => {
+          syncUsersToServer(updated);
+        });
+      }
+
       try {
         activityLogger.log('PASSWORD_RESET', `Mereset password untuk akun: ${userId}`, userId);
       } catch {}
       return true;
     }
     return false;
+  },
+
+  async resetPasswordAsync(userId: string, newPassword: string): Promise<boolean> {
+    const cleanPass = newPassword.trim();
+    if (!cleanPass || cleanPass.length < 4) return false;
+
+    // First update locally
+    const localOk = this.resetPassword(userId, cleanPass);
+    if (!localOk) return false;
+
+    // Then guarantee server persistence
+    try {
+      const res = await fetch('/api/users/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, newPassword: cleanPass })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.user) {
+          const users = this.getAllUsers().map(u => u.id === data.user.id ? { ...u, password: cleanPass } : u);
+          cachedUsers = users;
+          try {
+            localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
+          } catch {}
+          notifyAuthSubscribers();
+        }
+        return true;
+      } else {
+        await syncUsersToServer(this.getAllUsers());
+        return true;
+      }
+    } catch {
+      await syncUsersToServer(this.getAllUsers());
+      return true;
+    }
   },
 
   updateUserRole(userId: string, newRole: 'ADMIN' | 'USER'): boolean {

@@ -691,7 +691,7 @@ function readUsers(): any[] {
 
     let modified = false;
     SEED_USERS.forEach(seed => {
-      const exists = parsed.some(p => p.username.toLowerCase() === seed.username.toLowerCase());
+      const exists = parsed.some(p => p.id === seed.id || (p.username && p.username.toLowerCase() === seed.username.toLowerCase()));
       if (!exists) {
         parsed.unshift(seed);
         modified = true;
@@ -727,6 +727,129 @@ app.post('/api/users/sync', (req, res) => {
     return res.json({ success: true, count: users.length });
   }
   res.status(400).json({ error: 'Array users dibutuhkan' });
+});
+
+app.post('/api/users/reset-password', (req, res) => {
+  const { userId, newPassword } = req.body;
+  if (!userId || !newPassword || typeof newPassword !== 'string' || newPassword.trim().length < 4) {
+    return res.status(400).json({ error: 'User ID dan password baru (minimal 4 karakter) wajib diisi' });
+  }
+
+  const cleanUserId = String(userId).trim();
+  const cleanPass = newPassword.trim();
+  const users = readUsers();
+  let found = false;
+  let targetUser: any = null;
+
+  const updated = users.map((u: any) => {
+    if (u.id === cleanUserId || (u.username && u.username.toLowerCase() === cleanUserId.toLowerCase())) {
+      found = true;
+      targetUser = {
+        ...u,
+        password: cleanPass
+      };
+      return targetUser;
+    }
+    return u;
+  });
+
+  if (!found || !targetUser) {
+    return res.status(404).json({ error: `User dengan ID/username "${cleanUserId}" tidak ditemukan` });
+  }
+
+  writeUsers(updated);
+
+  // Record audit log for password update
+  try {
+    const logItem = {
+      id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      timestamp: new Date().toISOString(),
+      userId: targetUser.username || targetUser.id,
+      userName: targetUser.name,
+      userDepartment: targetUser.department,
+      userRole: targetUser.role,
+      action: 'PASSWORD_RESET',
+      details: `Password untuk akun ${targetUser.name} (${targetUser.username}) berhasil diperbarui/direset`,
+      targetId: targetUser.id
+    };
+    const currentLogs = readActivityLogs();
+    currentLogs.unshift(logItem);
+    writeActivityLogs(currentLogs);
+  } catch (err) {
+    console.error('Error logging password reset:', err);
+  }
+
+  res.json({ success: true, user: targetUser, message: 'Password berhasil diperbarui di server' });
+});
+
+app.post('/api/auth/login', (req, res) => {
+  const { username, password } = req.body;
+  if (!username || !password) {
+    return res.status(400).json({ success: false, error: 'User ID dan Kata Sandi wajib diisi.' });
+  }
+
+  const cleanUsername = String(username).trim().toLowerCase();
+  const cleanPassword = String(password).trim();
+
+  const aliasMap: Record<string, string> = {
+    'admin.nofi': 'nofi',
+    'admin1': 'nofi',
+    'nofizahara': 'nofi',
+    'nofi zahara': 'nofi',
+    'admin.resna': 'resna',
+    'admin2': 'resna',
+    'resnawati': 'resna',
+    'resna wati': 'resna',
+    'admin.deri': 'deri',
+    'admin3': 'deri',
+    'deritialis': 'deri',
+    'deri tialis': 'deri',
+    'deri tialis peristiawan': 'deri',
+    'admin.yuda': 'yuda',
+    'admin4': 'yuda',
+    'yudaputra': 'yuda',
+    'yuda putra': 'yuda',
+    'yuda putra utama': 'yuda',
+  };
+
+  const targetUsername = aliasMap[cleanUsername] || cleanUsername;
+  const users = readUsers();
+  const user = users.find((u: any) => u.username && u.username.toLowerCase() === targetUsername);
+
+  if (!user) {
+    return res.status(401).json({ success: false, error: 'User ID / Username tidak ditemukan.' });
+  }
+
+  if (user.password !== cleanPassword) {
+    return res.status(401).json({ success: false, error: 'Password yang dimasukkan salah.' });
+  }
+
+  const updatedUser = {
+    ...user,
+    lastLogin: new Date().toISOString()
+  };
+
+  const updatedUsers = users.map((u: any) => u.id === user.id ? updatedUser : u);
+  writeUsers(updatedUsers);
+
+  try {
+    const logItem = {
+      id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      timestamp: new Date().toISOString(),
+      userId: updatedUser.username,
+      userName: updatedUser.name,
+      userDepartment: updatedUser.department,
+      userRole: updatedUser.role,
+      action: 'LOGIN',
+      details: `User ${updatedUser.name} (${updatedUser.department}) berhasil login ke sistem`,
+      targetId: updatedUser.username
+    };
+    const currentLogs = readActivityLogs();
+    currentLogs.unshift(logItem);
+    writeActivityLogs(currentLogs);
+  } catch {}
+
+  res.json({ success: true, user: updatedUser });
 });
 
 // ==========================================

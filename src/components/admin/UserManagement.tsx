@@ -41,10 +41,13 @@ export const UserManagement: React.FC = () => {
   const [newDepartment, setNewDepartment] = useState('Operasi');
   const [newRole, setNewRole] = useState<'ADMIN' | 'USER'>('USER');
   const [newUserPass, setNewUserPass] = useState('user123');
+  const [newEmail, setNewEmail] = useState('');
 
   // Edit user modal state
   const [selectedUserForEdit, setSelectedUserForEdit] = useState<UserAccount | null>(null);
+  const [editUsername, setEditUsername] = useState('');
   const [editFullName, setEditFullName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
   const [editDepartment, setEditDepartment] = useState('Operasi');
   const [editRole, setEditRole] = useState<'ADMIN' | 'USER'>('USER');
 
@@ -85,7 +88,7 @@ export const UserManagement: React.FC = () => {
     setConfirmPasswordInput(rand);
   };
 
-  const handleConfirmResetPassword = (e: React.FormEvent) => {
+  const handleConfirmResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedUserForReset) return;
 
@@ -99,9 +102,9 @@ export const UserManagement: React.FC = () => {
       return;
     }
 
-    const success = authStorage.resetPassword(selectedUserForReset.id, newPasswordInput.trim());
+    const success = await authStorage.resetPasswordAsync(selectedUserForReset.id, newPasswordInput.trim());
     if (success) {
-      showNotificationMsg(`Password untuk akun "${selectedUserForReset.username}" (${selectedUserForReset.name}) berhasil diperbarui menjadi "${newPasswordInput.trim()}".`);
+      showNotificationMsg(`Password untuk akun "${selectedUserForReset.username}" (${selectedUserForReset.name}) berhasil diperbarui dan tersimpan ke server.`);
       setSelectedUserForReset(null);
     } else {
       showNotificationMsg('Gagal mereset password akun.', 'error');
@@ -137,6 +140,7 @@ export const UserManagement: React.FC = () => {
     authStorage.addUser({
       username: newUsername.trim().toLowerCase(),
       name: newFullName.trim(),
+      email: newEmail.trim() || undefined,
       department: newDepartment,
       role: newRole,
       password: newUserPass.trim(),
@@ -147,12 +151,15 @@ export const UserManagement: React.FC = () => {
     setIsAddUserOpen(false);
     setNewUsername('');
     setNewFullName('');
+    setNewEmail('');
     setNewUserPass('user123');
   };
 
   const handleOpenEditUserModal = (user: UserAccount) => {
     setSelectedUserForEdit(user);
+    setEditUsername(user.username);
     setEditFullName(user.name);
+    setEditEmail(user.email || '');
     setEditDepartment(user.department);
     setEditRole(user.role);
   };
@@ -165,16 +172,37 @@ export const UserManagement: React.FC = () => {
       return;
     }
 
+    const cleanUsername = editUsername.trim().toLowerCase();
+    if (!cleanUsername) {
+      showNotificationMsg('User ID tidak boleh kosong.', 'error');
+      return;
+    }
+
+    // Check duplicate username if username changed
+    if (cleanUsername !== selectedUserForEdit.username.toLowerCase()) {
+      if (selectedUserForEdit.username === 'admin') {
+        showNotificationMsg('User ID master admin tidak dapat diubah.', 'error');
+        return;
+      }
+      if (users.some(u => u.id !== selectedUserForEdit.id && u.username.toLowerCase() === cleanUsername)) {
+        showNotificationMsg(`User ID "${cleanUsername}" sudah digunakan akun lain. Silakan pilih ID lain.`, 'error');
+        return;
+      }
+    }
+
     // Prevent changing master admin role to non-admin
     const finalRole = selectedUserForEdit.username === 'admin' ? 'ADMIN' : editRole;
+    const finalUsername = selectedUserForEdit.username === 'admin' ? 'admin' : cleanUsername;
 
     authStorage.updateUser(selectedUserForEdit.id, {
+      username: finalUsername,
       name: editFullName.trim(),
+      email: editEmail.trim() || undefined,
       department: editDepartment,
       role: finalRole
     });
 
-    showNotificationMsg(`Data akun "${selectedUserForEdit.username}" berhasil diperbarui.`);
+    showNotificationMsg(`Data akun "${finalUsername}" (User ID, Email, Nama & Role) berhasil diperbarui secara realtime.`);
     setSelectedUserForEdit(null);
   };
 
@@ -388,8 +416,14 @@ export const UserManagement: React.FC = () => {
                                 </span>
                               )}
                             </div>
-                            <div className="text-[11px] text-slate-400">
-                              {user.lastLogin ? `Login: ${new Date(user.lastLogin).toLocaleDateString('id-ID')}` : 'Belum pernah login'}
+                            <div className="text-[11px] text-slate-400 flex items-center gap-1.5 flex-wrap">
+                              <span>{user.lastLogin ? `Login: ${new Date(user.lastLogin).toLocaleDateString('id-ID')}` : 'Belum pernah login'}</span>
+                              {user.email && (
+                                <>
+                                  <span>&bull;</span>
+                                  <span className="text-slate-500 font-mono text-[10px] bg-slate-50 px-1 rounded border border-slate-200">{user.email}</span>
+                                </>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -654,6 +688,19 @@ export const UserManagement: React.FC = () => {
                 />
               </div>
 
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700 block uppercase tracking-wider">
+                  Email Notifikasi (Opsional)
+                </label>
+                <input
+                  type="email"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  placeholder="misal: pic.operasi@pln.co.id"
+                  className="w-full py-2 px-3 rounded-xl border border-slate-200 text-xs sm:text-sm font-medium bg-slate-50/50 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-700 block uppercase tracking-wider">
@@ -748,6 +795,43 @@ export const UserManagement: React.FC = () => {
             </div>
 
             <form onSubmit={handleEditUserSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700 block uppercase tracking-wider">
+                    User ID (Login) <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={editUsername}
+                    onChange={(e) => setEditUsername(e.target.value.toLowerCase().replace(/\s+/g, ''))}
+                    disabled={selectedUserForEdit.username === 'admin'}
+                    placeholder="User ID login"
+                    required
+                    className={`w-full py-2.5 px-3 rounded-xl border border-slate-200 text-xs sm:text-sm font-mono font-bold ${
+                      selectedUserForEdit.username === 'admin'
+                        ? 'bg-slate-100 text-slate-500 cursor-not-allowed'
+                        : 'bg-slate-50/50 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 text-indigo-700'
+                    }`}
+                  />
+                  {selectedUserForEdit.username === 'admin' && (
+                    <span className="text-[10px] text-slate-400 block">ID master admin terkunci.</span>
+                  )}
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700 block uppercase tracking-wider">
+                    Email Notifikasi
+                  </label>
+                  <input
+                    type="email"
+                    value={editEmail}
+                    onChange={(e) => setEditEmail(e.target.value)}
+                    placeholder="email.pic@pln.co.id"
+                    className="w-full py-2.5 px-3 rounded-xl border border-slate-200 text-xs sm:text-sm font-medium bg-slate-50/50 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+              </div>
+
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-700 block uppercase tracking-wider">
                   Nama Lengkap / PIC <span className="text-rose-500">*</span>

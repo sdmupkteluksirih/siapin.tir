@@ -37,13 +37,13 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
     setIsLoading(true);
 
-    setTimeout(() => {
-      const res = authStorage.login(username, password);
+    try {
+      const res = await authStorage.loginAsync(username, password);
       setIsLoading(false);
 
       if (res.success && res.user) {
@@ -51,7 +51,10 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
       } else {
         setErrorMsg(res.error || 'Login gagal. Periksa kembali ID dan Password.');
       }
-    }, 250);
+    } catch {
+      setIsLoading(false);
+      setErrorMsg('Terjadi kesalahan verifikasi akun. Silakan coba lagi.');
+    }
   };
 
   const handleQuickFill = (user: string, pass: string) => {

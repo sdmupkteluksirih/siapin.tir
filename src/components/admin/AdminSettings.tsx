@@ -36,7 +36,8 @@ import {
   EyeOff,
   UserCog,
   Mail,
-  ExternalLink
+  ExternalLink,
+  Loader2
 } from 'lucide-react';
 
 export const AdminSettings: React.FC = () => {
@@ -51,6 +52,7 @@ export const AdminSettings: React.FC = () => {
   const [newPassMap, setNewPassMap] = useState<Record<string, string>>({});
   const [showNewPassMap, setShowNewPassMap] = useState<Record<string, boolean>>({});
   const [passSuccessMap, setPassSuccessMap] = useState<Record<string, string>>({});
+  const [isSavingPassMap, setIsSavingPassMap] = useState<Record<string, boolean>>({});
   const [editingEmailUserId, setEditingEmailUserId] = useState<string | null>(null);
   const [emailInputVal, setEmailInputVal] = useState('');
 
@@ -90,27 +92,35 @@ export const AdminSettings: React.FC = () => {
     setShowNewPassMap(prev => ({ ...prev, [userId]: !prev[userId] }));
   };
 
-  const handleSaveUserPassword = (userId: string, userName: string) => {
+  const handleSaveUserPassword = async (userId: string, userName: string) => {
     const newPass = (newPassMap[userId] || '').trim();
     if (!newPass || newPass.length < 4) {
       alert('Kata sandi baru minimal 4 karakter.');
       return;
     }
 
-    const success = authStorage.resetPassword(userId, newPass);
-    if (success) {
-      setPassSuccessMap(prev => ({ ...prev, [userId]: 'Kata sandi berhasil diperbarui!' }));
-      setNewPassMap(prev => ({ ...prev, [userId]: '' }));
-      setAllUsers(authStorage.getAllUsers());
-      setTimeout(() => {
-        setPassSuccessMap(prev => {
-          const next = { ...prev };
-          delete next[userId];
-          return next;
-        });
-      }, 3000);
-    } else {
-      alert('Gagal memperbarui kata sandi. Silakan coba lagi.');
+    setIsSavingPassMap(prev => ({ ...prev, [userId]: true }));
+    try {
+      const success = await authStorage.resetPasswordAsync(userId, newPass);
+      setIsSavingPassMap(prev => ({ ...prev, [userId]: false }));
+
+      if (success) {
+        setPassSuccessMap(prev => ({ ...prev, [userId]: 'Tersimpan ke Server!' }));
+        setNewPassMap(prev => ({ ...prev, [userId]: '' }));
+        setAllUsers(authStorage.getAllUsers());
+        setTimeout(() => {
+          setPassSuccessMap(prev => {
+            const next = { ...prev };
+            delete next[userId];
+            return next;
+          });
+        }, 4000);
+      } else {
+        alert('Gagal memperbarui kata sandi. Silakan coba lagi.');
+      }
+    } catch {
+      setIsSavingPassMap(prev => ({ ...prev, [userId]: false }));
+      alert('Terjadi kesalahan koneksi saat menyimpan password.');
     }
   };
 
@@ -722,6 +732,12 @@ export const AdminSettings: React.FC = () => {
                             type={showNewPassMap[user.id] ? 'text' : 'password'}
                             value={newPassMap[user.id] || ''}
                             onChange={(e) => setNewPassMap(prev => ({ ...prev, [user.id]: e.target.value }))}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleSaveUserPassword(user.id, user.name);
+                              }
+                            }}
                             placeholder="Ketik password baru (min. 4 karakter)"
                             className="w-full px-3 py-2 pr-9 text-xs rounded-lg border border-slate-300 bg-white font-mono text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 shadow-2xs"
                           />
@@ -738,12 +754,21 @@ export const AdminSettings: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => handleSaveUserPassword(user.id, user.name)}
-                          disabled={!newPassMap[user.id] || newPassMap[user.id].trim().length < 4}
+                          disabled={!newPassMap[user.id] || newPassMap[user.id].trim().length < 4 || isSavingPassMap[user.id]}
                           className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg text-xs font-bold transition shadow-2xs flex items-center gap-1.5 shrink-0 cursor-pointer"
-                          title="Simpan kata sandi baru"
+                          title="Simpan kata sandi baru ke server"
                         >
-                          <Check className="w-3.5 h-3.5" />
-                          <span className="hidden sm:inline">Simpan</span>
+                          {isSavingPassMap[user.id] ? (
+                            <>
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              <span className="hidden sm:inline">Menyimpan...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Check className="w-3.5 h-3.5" />
+                              <span className="hidden sm:inline">Simpan</span>
+                            </>
+                          )}
                         </button>
                       </div>
                     </div>
