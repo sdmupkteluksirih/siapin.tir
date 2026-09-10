@@ -869,7 +869,7 @@ export const RoomAgendaCalendar: React.FC<RoomAgendaCalendarProps> = ({
             </div>
 
             {/* 4 Physical Meeting Rooms with Visual Horizontal Timeline Bars */}
-            <div className="space-y-4 max-h-[480px] overflow-y-auto pr-1">
+            <div className="space-y-4">
               {PHYSICAL_ROOMS.map((room) => {
                 // Bookings in this room on inspected date
                 const roomBookings = inspectedDayBookings.filter(b => b.meetingLocation === room.name);
