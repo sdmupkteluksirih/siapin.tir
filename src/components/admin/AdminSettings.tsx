@@ -44,14 +44,15 @@ export const AdminSettings: React.FC = () => {
   const [bgSettings, setBgSettings] = useState<BackgroundSettings>(() => themeStorage.getSettings());
   const [bgSavedSuccess, setBgSavedSuccess] = useState(false);
 
-  // 4 Admin Accounts state
-  const [adminUsers, setAdminUsers] = useState<UserAccount[]>(() => 
-    authStorage.getAllUsers().filter(u => u.role === 'ADMIN')
-  );
-  const [changingPassUserId, setChangingPassUserId] = useState<string | null>(null);
-  const [newPasswordVal, setNewPasswordVal] = useState('');
-  const [showPasswordVal, setShowPasswordVal] = useState(false);
-  const [passChangeSuccess, setPassChangeSuccess] = useState<string | null>(null);
+  // Unified Accounts state (Admin & Bagian)
+  const [allUsers, setAllUsers] = useState<UserAccount[]>(() => authStorage.getAllUsers());
+  const [accountFilter, setAccountFilter] = useState<'ALL' | 'ADMIN' | 'USER'>('ALL');
+  const [showExistingPass, setShowExistingPass] = useState<Record<string, boolean>>({});
+  const [newPassMap, setNewPassMap] = useState<Record<string, string>>({});
+  const [showNewPassMap, setShowNewPassMap] = useState<Record<string, boolean>>({});
+  const [passSuccessMap, setPassSuccessMap] = useState<Record<string, string>>({});
+  const [editingEmailUserId, setEditingEmailUserId] = useState<string | null>(null);
+  const [emailInputVal, setEmailInputVal] = useState('');
 
   // WhatsApp Admin Contacts state
   const [adminContacts, setAdminContacts] = useState<AdminContact[]>(() => whatsappService.getAdminContacts());
@@ -72,7 +73,7 @@ export const AdminSettings: React.FC = () => {
       setBgSettings(updated);
     });
     const unsubAuth = authStorage.subscribe(() => {
-      setAdminUsers(authStorage.getAllUsers().filter(u => u.role === 'ADMIN'));
+      setAllUsers(authStorage.getAllUsers());
     });
 
     return () => {
@@ -81,33 +82,48 @@ export const AdminSettings: React.FC = () => {
     };
   }, []);
 
-  const handleStartChangePassword = (userId: string) => {
-    setChangingPassUserId(userId);
-    setNewPasswordVal('');
-    setShowPasswordVal(false);
+  const handleToggleExistingPass = (userId: string) => {
+    setShowExistingPass(prev => ({ ...prev, [userId]: !prev[userId] }));
   };
 
-  const handleCancelChangePassword = () => {
-    setChangingPassUserId(null);
-    setNewPasswordVal('');
-    setShowPasswordVal(false);
+  const handleToggleNewPass = (userId: string) => {
+    setShowNewPassMap(prev => ({ ...prev, [userId]: !prev[userId] }));
   };
 
-  const handleSaveAdminPassword = (userId: string, userName: string) => {
-    if (!newPasswordVal.trim() || newPasswordVal.trim().length < 4) {
+  const handleSaveUserPassword = (userId: string, userName: string) => {
+    const newPass = (newPassMap[userId] || '').trim();
+    if (!newPass || newPass.length < 4) {
       alert('Kata sandi baru minimal 4 karakter.');
       return;
     }
 
-    const success = authStorage.resetPassword(userId, newPasswordVal.trim());
+    const success = authStorage.resetPassword(userId, newPass);
     if (success) {
-      setPassChangeSuccess(`Kata sandi akun ${userName} berhasil diperbarui.`);
-      setChangingPassUserId(null);
-      setNewPasswordVal('');
-      setTimeout(() => setPassChangeSuccess(null), 3000);
+      setPassSuccessMap(prev => ({ ...prev, [userId]: 'Kata sandi berhasil diperbarui!' }));
+      setNewPassMap(prev => ({ ...prev, [userId]: '' }));
+      setAllUsers(authStorage.getAllUsers());
+      setTimeout(() => {
+        setPassSuccessMap(prev => {
+          const next = { ...prev };
+          delete next[userId];
+          return next;
+        });
+      }, 3000);
     } else {
       alert('Gagal memperbarui kata sandi. Silakan coba lagi.');
     }
+  };
+
+  const handleStartEditEmail = (user: UserAccount) => {
+    setEditingEmailUserId(user.id);
+    setEmailInputVal(user.email || '');
+  };
+
+  const handleSaveEmail = (userId: string) => {
+    authStorage.updateUser(userId, { email: emailInputVal.trim() || undefined });
+    setAllUsers(authStorage.getAllUsers());
+    setEditingEmailUserId(null);
+    setEmailInputVal('');
   };
 
   const handleBgChange = <K extends keyof BackgroundSettings>(key: K, value: BackgroundSettings[K]) => {
@@ -340,172 +356,7 @@ export const AdminSettings: React.FC = () => {
         </div>
       </div>
 
-      {/* Card: Akun Administrator Sistem (4 Admin Resmi) */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-4">
-        <div className="flex items-center justify-between pb-3 border-b border-slate-100 flex-wrap gap-2">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
-              <ShieldCheck className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="font-bold text-slate-900 text-base flex items-center gap-2">
-                <span>Daftar Akun Administrator Sistem</span>
-                <span className="text-xs bg-indigo-100 text-indigo-800 font-bold px-2 py-0.5 rounded-full border border-indigo-200">
-                  4 Admin Resmi
-                </span>
-              </h3>
-              <p className="text-xs text-slate-500">
-                Akun administrator berwenang untuk persetujuan (approve/reject), rekapitulasi, dan audit trail SI APIN.
-              </p>
-            </div>
-          </div>
 
-          {passChangeSuccess && (
-            <span className="text-xs text-emerald-700 bg-emerald-50 font-bold px-3 py-1 rounded-full border border-emerald-200 animate-in fade-in flex items-center gap-1">
-              <Check className="w-3.5 h-3.5" />
-              {passChangeSuccess}
-            </span>
-          )}
-        </div>
-
-        <div className="space-y-3">
-          {adminUsers.map((adm) => {
-            const isEditingPassword = changingPassUserId === adm.id;
-
-            return (
-              <div
-                key={adm.id}
-                id={`admin-account-card-${adm.username}`}
-                className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-slate-50 transition-all space-y-3"
-              >
-                <div className="flex items-center justify-between gap-3 flex-wrap">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white font-black text-sm flex items-center justify-center shrink-0 shadow-2xs">
-                      {adm.avatarText || adm.name.slice(0, 2).toUpperCase()}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <strong className="text-sm text-slate-900">{adm.name}</strong>
-                        {adm.username === 'nofi' && (
-                          <span className="text-[10px] font-bold bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded border border-indigo-200">
-                            Admin User 1
-                          </span>
-                        )}
-                        {adm.username === 'resna' && (
-                          <span className="text-[10px] font-bold bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded border border-indigo-200">
-                            Admin User 2
-                          </span>
-                        )}
-                        {adm.username === 'deri' && (
-                          <span className="text-[10px] font-bold bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded border border-blue-200">
-                            Admin Aplikasi 1
-                          </span>
-                        )}
-                        {adm.username === 'yuda' && (
-                          <span className="text-[10px] font-bold bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded border border-blue-200">
-                            Admin Aplikasi 2
-                          </span>
-                        )}
-                        {adm.username === 'admin' && (
-                          <span className="text-[10px] font-bold bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded">
-                            Master Admin
-                          </span>
-                        )}
-                        <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded border border-emerald-200 flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                          Aktif
-                        </span>
-                      </div>
-                      <div className="text-xs text-slate-500 flex items-center gap-2 flex-wrap mt-0.5">
-                        <span className="text-slate-600 font-medium">{adm.department}</span>
-                        <span>•</span>
-                        <span className="font-mono text-slate-700 font-semibold bg-white px-2 py-0.5 rounded border border-slate-200 text-[11px]">
-                          User ID: <strong className="text-indigo-600">{adm.username}</strong>
-                        </span>
-                        {adm.lastLogin && (
-                          <>
-                            <span>•</span>
-                            <span className="text-[11px] text-slate-400">
-                              Login terakhir: {new Date(adm.lastLogin).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => isEditingPassword ? handleCancelChangePassword() : handleStartChangePassword(adm.id)}
-                      className="px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
-                    >
-                      <KeyRound className="w-3.5 h-3.5 text-indigo-600" />
-                      <span>{isEditingPassword ? 'Batal' : 'Ubah Kata Sandi'}</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Inline Change Password Form */}
-                {isEditingPassword && (
-                  <div className="p-3.5 rounded-xl border border-indigo-200 bg-indigo-50/50 space-y-2.5 animate-in fade-in">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-indigo-950 flex items-center gap-1.5">
-                        <Lock className="w-3.5 h-3.5 text-indigo-600" />
-                        <span>Atur Kata Sandi Baru untuk {adm.name}</span>
-                      </span>
-                      <button
-                        type="button"
-                        onClick={handleCancelChangePassword}
-                        className="text-slate-400 hover:text-slate-600 p-1"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-
-                    <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-                      <div className="relative flex-1 w-full">
-                        <input
-                          type={showPasswordVal ? 'text' : 'password'}
-                          value={newPasswordVal}
-                          onChange={(e) => setNewPasswordVal(e.target.value)}
-                          placeholder="Ketik kata sandi baru (min. 4 karakter)"
-                          className="w-full px-3 py-2 pr-10 text-xs rounded-xl border border-slate-300 bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 font-mono shadow-2xs"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPasswordVal(!showPasswordVal)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
-                        >
-                          {showPasswordVal ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                        </button>
-                      </div>
-
-                      <div className="flex items-center gap-2 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => handleSaveAdminPassword(adm.id, adm.name)}
-                          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-2xs flex items-center gap-1.5 cursor-pointer"
-                        >
-                          <Check className="w-3.5 h-3.5" />
-                          <span>Simpan Sandi</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleCancelChangePassword}
-                          className="px-3 py-2 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-semibold transition cursor-pointer"
-                        >
-                          Batal
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
 
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-4">
         <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
@@ -628,104 +479,278 @@ export const AdminSettings: React.FC = () => {
         </div>
       </div>
 
-      {/* Card 2.5: Manajemen Akun Pengguna & Reset Password */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-4">
-        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+      {/* Card: Manajemen Akun Pengguna & Administrator Terpadu (Tanpa Duplikasi) */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold">
-              <Users className="w-5 h-5" />
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold shadow-2xs">
+              <ShieldCheck className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-bold text-slate-900 text-base">
-                Manajemen Akun Bagian
+              <h3 className="font-bold text-slate-900 text-base flex items-center gap-2">
+                <span>Manajemen Akun Sistem (Admin & Bagian)</span>
+                <span className="text-xs bg-indigo-50 text-indigo-700 font-bold px-2 py-0.5 rounded-full border border-indigo-200">
+                  {allUsers.length} Akun
+                </span>
               </h3>
               <p className="text-xs text-slate-500">
-                Kelola hak akses, cek username, dan reset kata sandi akun bagian.
+                Pusat kelola seluruh akun: cek password eksisting terakhir, perbarui ke password terbaru, dan atur email notifikasi.
               </p>
             </div>
           </div>
-          <span className="text-xs bg-purple-50 text-purple-700 font-bold px-2.5 py-1 rounded-lg border border-purple-200">
-            9 Akun Aktif
-          </span>
+
+          {/* Filter Tabs */}
+          <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl text-xs font-semibold self-start sm:self-auto">
+            <button
+              type="button"
+              onClick={() => setAccountFilter('ALL')}
+              className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                accountFilter === 'ALL'
+                  ? 'bg-white text-indigo-700 shadow-2xs font-bold'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Semua ({allUsers.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setAccountFilter('ADMIN')}
+              className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                accountFilter === 'ADMIN'
+                  ? 'bg-white text-indigo-700 shadow-2xs font-bold'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Admin Sistem ({allUsers.filter(u => u.role === 'ADMIN').length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setAccountFilter('USER')}
+              className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                accountFilter === 'USER'
+                  ? 'bg-white text-indigo-700 shadow-2xs font-bold'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Akun Bagian ({allUsers.filter(u => u.role !== 'ADMIN').length})
+            </button>
+          </div>
         </div>
 
-        <div className="space-y-2">
-          {authStorage.getAllUsers().map((user) => (
-            <div 
-              key={user.id} 
-              className="p-3 rounded-xl border border-slate-200 bg-slate-50/70 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs"
-            >
-              <div className="flex items-center gap-3">
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${
-                  user.role === 'ADMIN' ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-700'
-                }`}>
-                  {user.avatarText || user.department.substring(0, 2).toUpperCase()}
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <strong className="text-slate-900">{user.name}</strong>
-                    {user.role === 'ADMIN' && (
-                      <span className="text-[10px] bg-indigo-600 text-white font-bold px-1.5 py-0.2 rounded uppercase">
-                        Admin GA
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-[11px] text-slate-500 mt-0.5 flex items-center gap-2 flex-wrap">
-                    <span>Bagian: <strong>{user.department}</strong> &bull; Username: <code className="font-mono text-indigo-700 font-bold">{user.username}</code></span>
-                    <span>&bull;</span>
-                    <span className="flex items-center gap-1">
-                      <Mail className="w-3 h-3 text-indigo-600 inline" />
-                      Email: <code className="font-mono text-slate-800 font-semibold">{user.email || '(Belum diset)'}</code>
-                    </span>
-                  </div>
-                </div>
-              </div>
+        {/* User Account Cards List */}
+        <div className="space-y-3">
+          {allUsers
+            .filter((user) => {
+              if (accountFilter === 'ADMIN') return user.role === 'ADMIN';
+              if (accountFilter === 'USER') return user.role !== 'ADMIN';
+              return true;
+            })
+            .map((user) => {
+              const isAdmin = user.role === 'ADMIN';
+              const isEditingEmail = editingEmailUserId === user.id;
 
-              <div className="flex items-center gap-2 shrink-0 flex-wrap sm:flex-nowrap">
+              return (
                 <div 
-                  className="w-28 h-8 px-2.5 rounded-lg border border-slate-200 bg-white flex items-center justify-center font-mono text-[11px] text-slate-600 shadow-2xs"
-                  title={`Kata sandi akun: ${user.password}`}
+                  key={user.id} 
+                  id={`account-row-${user.username}`}
+                  className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-slate-50/90 transition-all space-y-3.5"
                 >
-                  <span className="truncate">Pass: <strong className="text-slate-900">{user.password}</strong></span>
+                  {/* Account Header info */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-xs shadow-2xs shrink-0 ${
+                        isAdmin ? 'bg-indigo-600 text-white' : 'bg-emerald-600 text-white'
+                      }`}>
+                        {user.avatarText || user.department.substring(0, 2).toUpperCase()}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <strong className="text-slate-900 text-sm">{user.name}</strong>
+                          
+                          {/* Role Badges */}
+                          {user.username === 'nofi' && (
+                            <span className="text-[10px] font-bold bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded border border-indigo-200">
+                              Admin User 1
+                            </span>
+                          )}
+                          {user.username === 'resna' && (
+                            <span className="text-[10px] font-bold bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded border border-indigo-200">
+                              Admin User 2
+                            </span>
+                          )}
+                          {user.username === 'deri' && (
+                            <span className="text-[10px] font-bold bg-blue-100 text-blue-800 px-2 py-0.5 rounded border border-blue-200">
+                              Admin Aplikasi 1
+                            </span>
+                          )}
+                          {user.username === 'yuda' && (
+                            <span className="text-[10px] font-bold bg-blue-100 text-blue-800 px-2 py-0.5 rounded border border-blue-200">
+                              Admin Aplikasi 2
+                            </span>
+                          )}
+                          {user.username === 'admin' && (
+                            <span className="text-[10px] font-bold bg-slate-200 text-slate-800 px-2 py-0.5 rounded">
+                              Master Admin
+                            </span>
+                          )}
+                          {!['nofi', 'resna', 'deri', 'yuda', 'admin'].includes(user.username) && (
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
+                              isAdmin 
+                                ? 'bg-indigo-50 text-indigo-700 border-indigo-200' 
+                                : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                            }`}>
+                              {isAdmin ? 'Admin GA' : 'Akun Bagian'}
+                            </span>
+                          )}
+
+                          <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded border border-emerald-200 flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                            Aktif
+                          </span>
+                        </div>
+
+                        <div className="text-xs text-slate-500 mt-1 flex items-center gap-2 flex-wrap">
+                          <span>Bagian: <strong className="text-slate-700">{user.department}</strong></span>
+                          <span>&bull;</span>
+                          <span className="flex items-center gap-1">
+                            Username: <code className="font-mono text-indigo-700 font-bold bg-white px-1.5 py-0.5 rounded border border-slate-200 text-[11px]">{user.username}</code>
+                          </span>
+                          <span>&bull;</span>
+                          <span className="flex items-center gap-1">
+                            <Mail className="w-3 h-3 text-slate-400" />
+                            Email: <code className="font-mono text-slate-700 text-[11px]">{user.email || '(Belum diset)'}</code>
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Email Action */}
+                    <div className="flex items-center gap-2 shrink-0 self-start sm:self-center">
+                      <button
+                        type="button"
+                        onClick={() => isEditingEmail ? setEditingEmailUserId(null) : handleStartEditEmail(user)}
+                        className="px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 font-medium text-xs transition-colors cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                        title="Ubah email notifikasi akun"
+                      >
+                        <Mail className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>{isEditingEmail ? 'Batal Edit Email' : (user.email ? 'Ubah Email' : '+ Email Notif')}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Inline Email Editor if open */}
+                  {isEditingEmail && (
+                    <div className="p-3 rounded-xl border border-indigo-200 bg-indigo-50/60 flex flex-col sm:flex-row items-stretch sm:items-center gap-2 animate-in fade-in text-xs">
+                      <div className="flex items-center gap-2 flex-1">
+                        <Mail className="w-4 h-4 text-indigo-600 shrink-0" />
+                        <span className="text-indigo-950 font-semibold shrink-0">Email Notifikasi:</span>
+                        <input
+                          type="email"
+                          value={emailInputVal}
+                          onChange={(e) => setEmailInputVal(e.target.value)}
+                          placeholder="contoh: bagian.upk@pln.co.id"
+                          className="flex-1 px-3 py-1.5 rounded-lg border border-slate-300 bg-white font-mono text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 shadow-2xs"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleSaveEmail(user.id)}
+                          className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold transition cursor-pointer shadow-2xs flex items-center gap-1"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                          <span>Simpan Email</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingEmailUserId(null)}
+                          className="px-2.5 py-1.5 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-lg font-semibold transition cursor-pointer"
+                        >
+                          Batal
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* DUA BOX BERDAMPINGAN: PASSWORD EKSISTING & PASSWORD TERBARU */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                    {/* BOX 1: Password Eksisting Terakhir */}
+                    <div className="p-3 rounded-xl border border-slate-200 bg-white shadow-2xs space-y-1.5 flex flex-col justify-between">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                          <Lock className="w-3 h-3 text-slate-400" />
+                          <span>Password Eksisting Terakhir</span>
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-mono">
+                          {showExistingPass[user.id] ? 'Terlihat' : 'Tersandi'}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-2 bg-slate-50 px-3 py-2 rounded-lg border border-slate-200">
+                        <span className="font-mono text-xs text-slate-900 font-bold tracking-wider truncate">
+                          {showExistingPass[user.id] ? user.password : '••••••••'}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleExistingPass(user.id)}
+                          className="text-slate-400 hover:text-indigo-600 p-1 rounded-md transition cursor-pointer shrink-0"
+                          title={showExistingPass[user.id] ? 'Sembunyikan kata sandi eksisting' : 'Lihat kata sandi eksisting'}
+                        >
+                          {showExistingPass[user.id] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* BOX 2: Password Terbaru */}
+                    <div className="p-3 rounded-xl border border-indigo-200 bg-indigo-50/40 shadow-2xs space-y-1.5 flex flex-col justify-between">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold text-indigo-900 uppercase tracking-wider flex items-center gap-1.5">
+                          <KeyRound className="w-3 h-3 text-indigo-600" />
+                          <span>Password Terbaru</span>
+                        </span>
+                        {passSuccessMap[user.id] && (
+                          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-300 flex items-center gap-1 animate-in fade-in">
+                            <Check className="w-3 h-3" />
+                            {passSuccessMap[user.id]}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <div className="relative flex-1">
+                          <input
+                            type={showNewPassMap[user.id] ? 'text' : 'password'}
+                            value={newPassMap[user.id] || ''}
+                            onChange={(e) => setNewPassMap(prev => ({ ...prev, [user.id]: e.target.value }))}
+                            placeholder="Ketik password baru (min. 4 karakter)"
+                            className="w-full px-3 py-2 pr-9 text-xs rounded-lg border border-slate-300 bg-white font-mono text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 shadow-2xs"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleToggleNewPass(user.id)}
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600 cursor-pointer p-0.5"
+                            title={showNewPassMap[user.id] ? 'Sembunyikan kata sandi baru' : 'Lihat kata sandi baru'}
+                          >
+                            {showNewPassMap[user.id] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                          </button>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleSaveUserPassword(user.id, user.name)}
+                          disabled={!newPassMap[user.id] || newPassMap[user.id].trim().length < 4}
+                          className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg text-xs font-bold transition shadow-2xs flex items-center gap-1.5 shrink-0 cursor-pointer"
+                          title="Simpan kata sandi baru"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline">Simpan</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const newEmail = window.prompt(
-                      `Masukkan alamat email untuk akun ${user.name} (${user.username}):\n\nUser akan menerima notifikasi status booking (approval/penolakan) ke email ini.`,
-                      user.email || ''
-                    );
-                    if (newEmail !== null) {
-                      authStorage.updateUser(user.id, { email: newEmail.trim() || undefined });
-                      alert(`Email notifikasi untuk ${user.username} berhasil disimpan: ${newEmail.trim() || '(Dikosongkan)'}`);
-                      window.location.reload();
-                    }
-                  }}
-                  className="w-28 h-8 rounded-lg border border-indigo-200 bg-indigo-50/80 hover:bg-indigo-100 text-indigo-700 font-semibold text-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-2xs"
-                  title="Atur email notifikasi akun"
-                >
-                  <Mail className="w-3.5 h-3.5 shrink-0 text-indigo-600" />
-                  <span className="truncate">{user.email ? 'Ubah Email' : '+ Email'}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const newPass = window.prompt(`Masukkan kata sandi baru untuk ${user.name} (${user.username}):`, 'user123');
-                    if (newPass && newPass.trim()) {
-                      authStorage.resetPassword(user.id, newPass.trim());
-                      alert(`Kata sandi untuk ${user.username} berhasil diubah.`);
-                      window.location.reload();
-                    }
-                  }}
-                  className="w-28 h-8 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 font-semibold text-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-2xs"
-                  title="Reset kata sandi akun"
-                >
-                  <KeyRound className="w-3.5 h-3.5 shrink-0 text-slate-500" />
-                  <span className="truncate">Reset Pass</span>
-                </button>
-              </div>
-            </div>
-          ))}
+              );
+            })}
         </div>
       </div>
 
