@@ -529,6 +529,7 @@ const SEED_USERS = [
     name: 'NOFI ZAHARA',
     role: 'ADMIN',
     department: 'Keuangan & Umum (Admin User 1)',
+    email: 'nofi.zahara@pln.co.id',
     password: 'admin123',
     avatarText: 'NZ',
     lastLogin: '2026-08-20T08:00:00.000Z',
@@ -540,6 +541,7 @@ const SEED_USERS = [
     name: 'RESNA WATI',
     role: 'ADMIN',
     department: 'Keuangan & Umum (Admin User 2)',
+    email: 'resna.wati@pln.co.id',
     password: 'admin123',
     avatarText: 'RW',
     lastLogin: '2026-08-20T08:00:00.000Z',
@@ -551,6 +553,7 @@ const SEED_USERS = [
     name: 'DERI TIALIS PERISTIAWAN',
     role: 'ADMIN',
     department: 'Sistem Informasi & TI (Admin Aplikasi 1)',
+    email: 'deri.tialis@pln.co.id',
     password: 'admin123',
     avatarText: 'DP',
     lastLogin: '2026-08-20T08:00:00.000Z',
@@ -562,6 +565,7 @@ const SEED_USERS = [
     name: 'YUDA PUTRA UTAMA',
     role: 'ADMIN',
     department: 'Sistem Informasi & TI (Admin Aplikasi 2)',
+    email: 'yuda.putra@pln.co.id',
     password: 'admin123',
     avatarText: 'YP',
     lastLogin: '2026-08-20T08:00:00.000Z',
@@ -573,6 +577,7 @@ const SEED_USERS = [
     name: 'Administrator Si APIN (Master)',
     role: 'ADMIN',
     department: 'Keuangan & Umum',
+    email: 'sdm.upkteluksirih@gmail.com',
     password: 'admin123',
     avatarText: 'AD',
     lastLogin: '2026-08-20T08:00:00.000Z',
@@ -584,6 +589,7 @@ const SEED_USERS = [
     name: 'PIC Operasi',
     role: 'USER',
     department: 'Operasi',
+    email: 'operasi.teluksirih@gmail.com',
     password: 'user123',
     avatarText: 'OP',
     lastLogin: '2026-08-19T09:15:00.000Z',
@@ -595,6 +601,7 @@ const SEED_USERS = [
     name: 'PIC Pemeliharaan',
     role: 'USER',
     department: 'Pemeliharaan',
+    email: 'pemeliharaan.teluksirih@gmail.com',
     password: 'user123',
     avatarText: 'PH',
     lastLogin: '2026-08-19T11:20:00.000Z',
@@ -606,6 +613,7 @@ const SEED_USERS = [
     name: 'PIC Enjiniring',
     role: 'USER',
     department: 'Enjiniring',
+    email: 'enjiniring.teluksirih@gmail.com',
     password: 'user123',
     avatarText: 'EN',
     lastLogin: '2026-08-18T14:30:00.000Z',
@@ -617,6 +625,7 @@ const SEED_USERS = [
     name: 'PIC Coal & Ash Handling',
     role: 'USER',
     department: 'Coal & Ash Handling',
+    email: 'coalash.teluksirih@gmail.com',
     password: 'user123',
     avatarText: 'CA',
     lastLogin: '2026-08-17T10:00:00.000Z',
@@ -628,6 +637,7 @@ const SEED_USERS = [
     name: 'PIC Keuangan & Umum',
     role: 'USER',
     department: 'Keuangan & Umum',
+    email: 'keuangan.teluksirih@gmail.com',
     password: 'PLNip@KU2026',
     avatarText: 'KU',
     lastLogin: '2026-08-19T13:45:00.000Z',
@@ -639,6 +649,7 @@ const SEED_USERS = [
     name: 'PIC K3 & Keamanan',
     role: 'USER',
     department: 'K3 & Keamanan',
+    email: 'k3.teluksirih@gmail.com',
     password: 'user123',
     avatarText: 'K3',
     lastLogin: '2026-08-18T16:00:00.000Z',
@@ -650,6 +661,7 @@ const SEED_USERS = [
     name: 'PIC Lingkungan Hidup',
     role: 'USER',
     department: 'Lingkungan',
+    email: 'lingkungan.teluksirih@gmail.com',
     password: 'user123',
     avatarText: 'LH',
     lastLogin: '2026-08-16T08:30:00.000Z',
@@ -661,6 +673,7 @@ const SEED_USERS = [
     name: 'PIC Pengadaan',
     role: 'USER',
     department: 'Pengadaan',
+    email: 'pengadaan.teluksirih@gmail.com',
     password: 'user123',
     avatarText: 'PG',
     lastLogin: '2026-08-19T15:10:00.000Z',
@@ -672,6 +685,7 @@ const SEED_USERS = [
     name: 'PIC Sistem Manajemen Terintegrasi',
     role: 'USER',
     department: 'Sistem Manajemen Terintegrasi',
+    email: 'smt.teluksirih@gmail.com',
     password: 'user123',
     avatarText: 'SM',
     lastLogin: '2026-08-20T09:00:00.000Z',
@@ -691,10 +705,16 @@ function readUsers(): any[] {
 
     let modified = false;
     SEED_USERS.forEach(seed => {
-      const exists = parsed.some(p => p.id === seed.id || (p.username && p.username.toLowerCase() === seed.username.toLowerCase()));
-      if (!exists) {
+      const existing = parsed.find(p => p.id === seed.id || (p.username && p.username.toLowerCase() === seed.username.toLowerCase()));
+      if (!existing) {
         parsed.unshift(seed);
         modified = true;
+      } else {
+        // Backfill email if missing
+        if (!existing.email && seed.email) {
+          existing.email = seed.email;
+          modified = true;
+        }
       }
     });
 
@@ -729,6 +749,65 @@ app.post('/api/users/sync', (req, res) => {
   res.status(400).json({ error: 'Array users dibutuhkan' });
 });
 
+app.post('/api/users/batch-update', (req, res) => {
+  const { users } = req.body;
+  if (!Array.isArray(users)) {
+    return res.status(400).json({ error: 'Array users dibutuhkan' });
+  }
+
+  const currentUsers = readUsers();
+  let updateCount = 0;
+  const updatedList = currentUsers.map((existing: any) => {
+    const incoming = users.find((u: any) => 
+      u.id === existing.id || 
+      (u.username && u.username.toLowerCase() === existing.username?.toLowerCase())
+    );
+    if (!incoming) return existing;
+
+    updateCount++;
+    const result = { ...existing };
+    if (incoming.email !== undefined) {
+      const cleanEmail = String(incoming.email || '').trim();
+      result.email = cleanEmail || undefined;
+    }
+    if (incoming.password && String(incoming.password).trim().length >= 4) {
+      result.password = String(incoming.password).trim();
+    }
+    if (incoming.name && String(incoming.name).trim()) {
+      result.name = String(incoming.name).trim();
+    }
+    if (incoming.role && (incoming.role === 'ADMIN' || incoming.role === 'USER')) {
+      if (existing.username !== 'admin') {
+        result.role = incoming.role;
+      }
+    }
+    return result;
+  });
+
+  writeUsers(updatedList);
+
+  try {
+    const logItem = {
+      id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      timestamp: new Date().toISOString(),
+      userId: 'admin',
+      userName: 'Administrator',
+      userDepartment: 'Keuangan & Umum',
+      userRole: 'ADMIN',
+      action: 'PASSWORD_RESET',
+      details: `Batch update: Memperbarui password dan email untuk ${updateCount} akun user`,
+      targetId: 'all-users'
+    };
+    const currentLogs = readActivityLogs();
+    currentLogs.unshift(logItem);
+    writeActivityLogs(currentLogs);
+  } catch {}
+
+  notifySSE('users_changed');
+
+  res.json({ success: true, count: updateCount, users: updatedList, message: 'Seluruh akun berhasil diperbarui di server' });
+});
+
 app.post('/api/users/reset-password', (req, res) => {
   const { userId, newPassword } = req.body;
   if (!userId || !newPassword || typeof newPassword !== 'string' || newPassword.trim().length < 4) {
@@ -742,7 +821,11 @@ app.post('/api/users/reset-password', (req, res) => {
   let targetUser: any = null;
 
   const updated = users.map((u: any) => {
-    if (u.id === cleanUserId || (u.username && u.username.toLowerCase() === cleanUserId.toLowerCase())) {
+    if (
+      u.id === cleanUserId || 
+      (u.username && u.username.toLowerCase() === cleanUserId.toLowerCase()) ||
+      (u.email && u.email.toLowerCase() === cleanUserId.toLowerCase())
+    ) {
       found = true;
       targetUser = {
         ...u,
@@ -754,7 +837,7 @@ app.post('/api/users/reset-password', (req, res) => {
   });
 
   if (!found || !targetUser) {
-    return res.status(404).json({ error: `User dengan ID/username "${cleanUserId}" tidak ditemukan` });
+    return res.status(404).json({ error: `User dengan ID/username/email "${cleanUserId}" tidak ditemukan` });
   }
 
   writeUsers(updated);
@@ -778,6 +861,8 @@ app.post('/api/users/reset-password', (req, res) => {
   } catch (err) {
     console.error('Error logging password reset:', err);
   }
+
+  notifySSE('users_changed');
 
   res.json({ success: true, user: targetUser, message: 'Password berhasil diperbarui di server' });
 });
@@ -816,11 +901,13 @@ app.post('/api/auth/login', (req, res) => {
   const users = readUsers();
   const user = users.find((u: any) => 
     (u.username && u.username.toLowerCase() === targetUsername) ||
-    (u.id && u.id.toLowerCase() === targetUsername)
+    (u.id && u.id.toLowerCase() === targetUsername) ||
+    (u.email && u.email.toLowerCase() === cleanUsername) ||
+    (u.email && u.email.toLowerCase() === targetUsername)
   );
 
   if (!user) {
-    return res.status(401).json({ success: false, error: 'User ID / Username tidak ditemukan.' });
+    return res.status(401).json({ success: false, error: 'User ID / Username / Email tidak ditemukan.' });
   }
 
   if (user.password !== cleanPassword) {

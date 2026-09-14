@@ -225,7 +225,7 @@ async function fetchUsersFromServer() {
 
     const localUsers = authStorage.getAllUsers();
 
-    // Smart merge: Never overwrite a user's custom changed password with a default seed password
+    // Smart merge: Preserve emails and custom changed passwords
     let localHasCustomPasswords = false;
     const mergedUsers = serverUsers.map(sUser => {
       const localMatch = localUsers.find(
@@ -235,14 +235,25 @@ async function fetchUsersFromServer() {
         const defUser = DEFAULT_USERS.find(d => d.username.toLowerCase() === sUser.username.toLowerCase());
         const defaultPass = defUser ? defUser.password : 'user123';
 
-        // If local user has custom password that differs from default, but server still has default, prioritize local!
+        // Check if password should come from server or local
+        let finalPassword = sUser.password;
         if (localMatch.password !== defaultPass && sUser.password === defaultPass) {
           localHasCustomPasswords = true;
-          return {
-            ...sUser,
-            password: localMatch.password
-          };
+          finalPassword = localMatch.password;
+        } else if (sUser.password && sUser.password !== defaultPass) {
+          finalPassword = sUser.password;
+        } else if (localMatch.password) {
+          finalPassword = localMatch.password;
         }
+
+        const finalEmail = sUser.email || localMatch.email || defUser?.email;
+
+        return {
+          ...localMatch,
+          ...sUser,
+          password: finalPassword,
+          email: finalEmail
+        };
       }
       return sUser;
     });
@@ -430,10 +441,15 @@ export const authStorage = {
     };
 
     const targetUsername = aliasMap[cleanUsername] || cleanUsername;
-    const user = users.find(u => u.username.toLowerCase() === targetUsername);
+    const user = users.find(u => 
+      u.username.toLowerCase() === targetUsername ||
+      u.id.toLowerCase() === targetUsername ||
+      (u.email && u.email.toLowerCase() === cleanUsername) ||
+      (u.email && u.email.toLowerCase() === targetUsername)
+    );
 
     if (!user) {
-      return { success: false, error: 'User ID / Username tidak ditemukan.' };
+      return { success: false, error: 'User ID / Username / Email tidak ditemukan.' };
     }
 
     if (user.password !== password) {
@@ -703,6 +719,49 @@ export const authStorage = {
     }
 
     await syncUsersToServer(this.getAllUsers());
+    return true;
+  },
+
+  async batchUpdateUsersAsync(userUpdates: Array<{ id: string; email?: string; password?: string; name?: string; role?: 'ADMIN' | 'USER' }>): Promise<boolean> {
+    const users = this.getAllUsers();
+    const updated = users.map(u => {
+      const match = userUpdates.find(up => up.id === u.id || (u.username && up.id.toLowerCase() === u.username.toLowerCase()));
+      if (!match) return u;
+      return {
+        ...u,
+        email: match.email !== undefined ? (match.email.trim() || undefined) : u.email,
+        password: match.password && match.password.trim().length >= 4 ? match.password.trim() : u.password,
+        name: match.name && match.name.trim() ? match.name.trim() : u.name,
+        role: match.role || u.role
+      };
+    });
+
+    cachedUsers = updated;
+    try {
+      localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(updated));
+    } catch {}
+    notifyAuthSubscribers();
+
+    try {
+      const res = await fetch('/api/users/batch-update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ users: userUpdates })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.users && Array.isArray(data.users)) {
+          cachedUsers = data.users;
+          try {
+            localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(data.users));
+          } catch {}
+          notifyAuthSubscribers();
+        }
+        return true;
+      }
+    } catch {
+      await syncUsersToServer(updated);
+    }
     return true;
   },
 

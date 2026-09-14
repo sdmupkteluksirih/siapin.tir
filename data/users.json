@@ -8,7 +8,8 @@
     "password": "user123",
     "avatarText": "SM",
     "lastLogin": "2026-08-20T09:00:00.000Z",
-    "createdAt": "2026-01-01T00:00:00.000Z"
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "email": "smt.teluksirih@gmail.com"
   },
   {
     "id": "usr-proc",
@@ -19,7 +20,8 @@
     "password": "user123",
     "avatarText": "PG",
     "lastLogin": "2026-08-19T15:10:00.000Z",
-    "createdAt": "2026-01-01T00:00:00.000Z"
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "email": "pengadaan.teluksirih@gmail.com"
   },
   {
     "id": "usr-ling",
@@ -30,7 +32,8 @@
     "password": "user123",
     "avatarText": "LH",
     "lastLogin": "2026-08-16T08:30:00.000Z",
-    "createdAt": "2026-01-01T00:00:00.000Z"
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "email": "lingkungan.teluksirih@gmail.com"
   },
   {
     "id": "usr-k3",
@@ -41,7 +44,8 @@
     "password": "user123",
     "avatarText": "K3",
     "lastLogin": "2026-08-18T16:00:00.000Z",
-    "createdAt": "2026-01-01T00:00:00.000Z"
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "email": "k3.teluksirih@gmail.com"
   },
   {
     "id": "usr-ku",
@@ -51,8 +55,9 @@
     "department": "Keuangan & Umum",
     "password": "PLNip@KU2026",
     "avatarText": "KU",
-    "lastLogin": "2026-09-14T03:14:59.737Z",
-    "createdAt": "2026-01-01T00:00:00.000Z"
+    "lastLogin": "2026-09-14T03:41:10.179Z",
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "email": "keuangan.teluksirih@gmail.com"
   },
   {
     "id": "usr-cah",
@@ -63,7 +68,8 @@
     "password": "user123",
     "avatarText": "CA",
     "lastLogin": "2026-08-17T10:00:00.000Z",
-    "createdAt": "2026-01-01T00:00:00.000Z"
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "email": "coalash.teluksirih@gmail.com"
   },
   {
     "id": "usr-enj",
@@ -74,7 +80,8 @@
     "password": "user123",
     "avatarText": "EN",
     "lastLogin": "2026-08-18T14:30:00.000Z",
-    "createdAt": "2026-01-01T00:00:00.000Z"
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "email": "enjiniring.teluksirih@gmail.com"
   },
   {
     "id": "usr-har",
@@ -85,7 +92,8 @@
     "password": "user123",
     "avatarText": "PH",
     "lastLogin": "2026-08-19T11:20:00.000Z",
-    "createdAt": "2026-01-01T00:00:00.000Z"
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "email": "pemeliharaan.teluksirih@gmail.com"
   },
   {
     "id": "usr-ops",
@@ -93,10 +101,11 @@
     "name": "PIC Operasi",
     "role": "USER",
     "department": "Operasi",
-    "password": "user123",
+    "password": "Operasi@TelukSirih2026",
     "avatarText": "OP",
-    "lastLogin": "2026-09-10T07:21:26.445Z",
-    "createdAt": "2026-01-01T00:00:00.000Z"
+    "lastLogin": "2026-09-14T03:46:54.190Z",
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "email": "operasi.teluksirih@gmail.com"
   },
   {
     "id": "usr-admin",
@@ -107,7 +116,8 @@
     "password": "admin123",
     "avatarText": "AD",
     "lastLogin": "2026-09-14T03:15:07.268Z",
-    "createdAt": "2026-01-01T00:00:00.000Z"
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "email": "sdm.upkteluksirih@gmail.com"
   },
   {
     "id": "usr-admin-yuda",
@@ -118,7 +128,8 @@
     "password": "admin123",
     "avatarText": "YP",
     "lastLogin": "2026-08-20T08:00:00.000Z",
-    "createdAt": "2026-01-01T00:00:00.000Z"
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "email": "yuda.putra@pln.co.id"
   },
   {
     "id": "usr-admin-deri",
@@ -129,7 +140,8 @@
     "password": "admin123",
     "avatarText": "DP",
     "lastLogin": "2026-08-20T08:00:00.000Z",
-    "createdAt": "2026-01-01T00:00:00.000Z"
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "email": "deri.tialis@pln.co.id"
   },
   {
     "id": "usr-admin-resna",
@@ -140,7 +152,8 @@
     "password": "admin123",
     "avatarText": "RW",
     "lastLogin": "2026-08-20T08:00:00.000Z",
-    "createdAt": "2026-01-01T00:00:00.000Z"
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "email": "resna.wati@pln.co.id"
   },
   {
     "id": "usr-admin-nofi",
@@ -151,6 +164,7 @@
     "password": "admin123",
     "avatarText": "NZ",
     "lastLogin": "2026-08-20T08:00:00.000Z",
-    "createdAt": "2026-01-01T00:00:00.000Z"
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "email": "nofi.zahara@pln.co.id"
   }
 ]

@@ -1,5 +1,104 @@
 [
   {
+    "id": "log-1789357616580-ql1y9",
+    "timestamp": "2026-09-14T03:46:56.580Z",
+    "userId": "operasi",
+    "userName": "PIC Operasi",
+    "userDepartment": "Operasi",
+    "userRole": "USER",
+    "action": "PASSWORD_RESET",
+    "details": "Password untuk akun PIC Operasi (operasi) berhasil diperbarui/direset",
+    "targetId": "usr-ops"
+  },
+  {
+    "id": "log-1789357614191-5fmsg",
+    "timestamp": "2026-09-14T03:46:54.191Z",
+    "userId": "operasi",
+    "userName": "PIC Operasi",
+    "userDepartment": "Operasi",
+    "userRole": "USER",
+    "action": "LOGIN",
+    "details": "User PIC Operasi (Operasi) berhasil login ke sistem",
+    "targetId": "operasi"
+  },
+  {
+    "id": "log-1789357611141-2oy9o",
+    "timestamp": "2026-09-14T03:46:51.141Z",
+    "userId": "admin",
+    "userName": "Administrator",
+    "userDepartment": "Keuangan & Umum",
+    "userRole": "ADMIN",
+    "action": "PASSWORD_RESET",
+    "details": "Batch update: Memperbarui password dan email untuk 1 akun user",
+    "targetId": "all-users"
+  },
+  {
+    "id": "log-1789357366644-e49qc",
+    "timestamp": "2026-09-14T03:42:46.644Z",
+    "userId": "operasi",
+    "userName": "PIC Operasi",
+    "userDepartment": "Operasi",
+    "userRole": "USER",
+    "action": "PASSWORD_RESET",
+    "details": "Password untuk akun PIC Operasi (operasi) berhasil diperbarui/direset",
+    "targetId": "usr-ops"
+  },
+  {
+    "id": "log-1789357364128-tvztx",
+    "timestamp": "2026-09-14T03:42:44.128Z",
+    "userId": "operasi",
+    "userName": "PIC Operasi",
+    "userDepartment": "Operasi",
+    "userRole": "USER",
+    "action": "LOGIN",
+    "details": "User PIC Operasi (Operasi) berhasil login ke sistem",
+    "targetId": "operasi"
+  },
+  {
+    "id": "log-1789357364112-pt3at",
+    "timestamp": "2026-09-14T03:42:44.112Z",
+    "userId": "operasi",
+    "userName": "PIC Operasi",
+    "userDepartment": "Operasi",
+    "userRole": "USER",
+    "action": "PASSWORD_RESET",
+    "details": "Password untuk akun PIC Operasi (operasi) berhasil diperbarui/direset",
+    "targetId": "usr-ops"
+  },
+  {
+    "id": "log-1789357270180-o5eyn",
+    "timestamp": "2026-09-14T03:41:10.180Z",
+    "userId": "keuangan",
+    "userName": "PIC Keuangan & Umum",
+    "userDepartment": "Keuangan & Umum",
+    "userRole": "USER",
+    "action": "LOGIN",
+    "details": "User PIC Keuangan & Umum (Keuangan & Umum) berhasil login ke sistem",
+    "targetId": "keuangan"
+  },
+  {
+    "id": "log-1789357267517-f7ojb",
+    "timestamp": "2026-09-14T03:41:07.517Z",
+    "userId": "keuangan",
+    "userName": "PIC Keuangan & Umum",
+    "userDepartment": "Keuangan & Umum",
+    "userRole": "USER",
+    "action": "LOGIN",
+    "details": "User PIC Keuangan & Umum (Keuangan & Umum) berhasil login ke sistem",
+    "targetId": "keuangan"
+  },
+  {
+    "id": "log-1789357264065-udejd",
+    "timestamp": "2026-09-14T03:41:04.065Z",
+    "userId": "admin",
+    "userName": "Administrator",
+    "userDepartment": "Keuangan & Umum",
+    "userRole": "ADMIN",
+    "action": "PASSWORD_RESET",
+    "details": "Batch update: Memperbarui password dan email untuk 0 akun user",
+    "targetId": "all-users"
+  },
+  {
     "id": "log-1789355710234-5z43k",
     "timestamp": "2026-09-14T03:15:10.234Z",
     "userId": "keuangan",

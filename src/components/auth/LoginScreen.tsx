@@ -114,7 +114,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                 Masuk ke Akun Anda
               </h2>
               <p className="text-xs text-slate-500 mt-0.5">
-                Masukkan User ID bagian atau Admin beserta kata sandi yang terdaftar.
+                Gunakan User ID bagian, username, atau alamat email beserta kata sandi yang terdaftar.
               </p>
             </div>
 
@@ -126,10 +126,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                 </div>
               )}
 
-              {/* User ID / Username Input */}
+              {/* User ID / Username / Email Input */}
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-700 block uppercase tracking-wider">
-                  User ID / Bagian <span className="text-rose-500">*</span>
+                  User ID / Username / Email <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
                   <input
@@ -137,13 +137,16 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                     id="login-username-input"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    placeholder="Masukkan User ID (contoh: operasi, admin)"
+                    placeholder="Masukkan User ID, Username, atau Email"
                     required
                     autoFocus
                     className="w-full py-3 pl-11 pr-4 rounded-xl border border-slate-200 text-sm font-medium bg-slate-50 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 text-slate-900 transition-all"
                   />
                   <User className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
                 </div>
+                <p className="text-[11px] text-slate-400">
+                  Bisa login dengan User ID (contoh: <code className="font-mono text-indigo-600">keuangan</code>, <code className="font-mono text-indigo-600">admin</code>) atau alamat Email terdaftar.
+                </p>
               </div>
 
               {/* Password Input */}
