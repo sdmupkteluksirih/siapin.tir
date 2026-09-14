@@ -225,44 +225,26 @@ async function fetchUsersFromServer() {
 
     const localUsers = authStorage.getAllUsers();
 
-    // Smart merge: Preserve emails and custom changed passwords
-    let localHasCustomPasswords = false;
-    const mergedUsers = serverUsers.map(sUser => {
+    // Server data is authoritative. When server sends user list, update local cache directly
+    const mergedUsers: UserAccount[] = serverUsers.map(sUser => {
       const localMatch = localUsers.find(
         l => l.id === sUser.id || (l.username && l.username.toLowerCase() === sUser.username.toLowerCase())
       );
-      if (localMatch) {
-        const defUser = DEFAULT_USERS.find(d => d.username.toLowerCase() === sUser.username.toLowerCase());
-        const defaultPass = defUser ? defUser.password : 'user123';
-
-        // Check if password should come from server or local
-        let finalPassword = sUser.password;
-        if (localMatch.password !== defaultPass && sUser.password === defaultPass) {
-          localHasCustomPasswords = true;
-          finalPassword = localMatch.password;
-        } else if (sUser.password && sUser.password !== defaultPass) {
-          finalPassword = sUser.password;
-        } else if (localMatch.password) {
-          finalPassword = localMatch.password;
-        }
-
-        const finalEmail = sUser.email || localMatch.email || defUser?.email;
-
-        return {
-          ...localMatch,
-          ...sUser,
-          password: finalPassword,
-          email: finalEmail
-        };
-      }
-      return sUser;
+      return {
+        ...(localMatch || {}),
+        ...sUser,
+        // Server password always takes precedence
+        password: sUser.password || localMatch?.password || 'user123',
+        email: sUser.email || localMatch?.email
+      };
     });
 
-    // Also include any local-only users
+    // Also keep any custom user created locally that might not yet be in server
+    let localHasCustomUsers = false;
     localUsers.forEach(lUser => {
       if (!mergedUsers.some(m => m.id === lUser.id || (m.username && m.username.toLowerCase() === lUser.username.toLowerCase()))) {
         mergedUsers.push(lUser);
-        localHasCustomPasswords = true;
+        localHasCustomUsers = true;
       }
     });
 
@@ -272,8 +254,7 @@ async function fetchUsersFromServer() {
     } catch {}
     notifyAuthSubscribers();
 
-    // If local had custom passwords that server lacked, sync back to server so server is permanently updated
-    if (localHasCustomPasswords) {
+    if (localHasCustomUsers) {
       syncUsersToServer(mergedUsers);
     }
   } catch {

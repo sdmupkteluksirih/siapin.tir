@@ -139,7 +139,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                     onChange={(e) => setUsername(e.target.value)}
                     placeholder="Masukkan User ID, Username, atau Email"
                     required
-                    autoFocus
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck="false"
+                    autoComplete="username"
                     className="w-full py-3 pl-11 pr-4 rounded-xl border border-slate-200 text-sm font-medium bg-slate-50 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 text-slate-900 transition-all"
                   />
                   <User className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
@@ -164,6 +167,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Masukkan kata sandi"
                     required
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck="false"
+                    autoComplete="current-password"
                     className="w-full py-3 pl-11 pr-11 rounded-xl border border-slate-200 text-sm font-medium bg-slate-50 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 text-slate-900 font-mono transition-all"
                   />
                   <Lock className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
