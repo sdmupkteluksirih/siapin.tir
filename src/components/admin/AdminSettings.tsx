@@ -761,12 +761,12 @@ export const AdminSettings: React.FC = () => {
                           {isSavingPassMap[user.id] ? (
                             <>
                               <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                              <span className="hidden sm:inline">Menyimpan...</span>
+                              <span>Menyimpan...</span>
                             </>
                           ) : (
                             <>
                               <Check className="w-3.5 h-3.5" />
-                              <span className="hidden sm:inline">Simpan</span>
+                              <span>Simpan</span>
                             </>
                           )}
                         </button>

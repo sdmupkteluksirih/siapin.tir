@@ -628,7 +628,7 @@ const SEED_USERS = [
     name: 'PIC Keuangan & Umum',
     role: 'USER',
     department: 'Keuangan & Umum',
-    password: 'user123',
+    password: 'PLNip@KU2026',
     avatarText: 'KU',
     lastLogin: '2026-08-19T13:45:00.000Z',
     createdAt: '2026-01-01T00:00:00.000Z'
@@ -814,7 +814,10 @@ app.post('/api/auth/login', (req, res) => {
 
   const targetUsername = aliasMap[cleanUsername] || cleanUsername;
   const users = readUsers();
-  const user = users.find((u: any) => u.username && u.username.toLowerCase() === targetUsername);
+  const user = users.find((u: any) => 
+    (u.username && u.username.toLowerCase() === targetUsername) ||
+    (u.id && u.id.toLowerCase() === targetUsername)
+  );
 
   if (!user) {
     return res.status(401).json({ success: false, error: 'User ID / Username tidak ditemukan.' });

@@ -1,5 +1,71 @@
 [
   {
+    "id": "log-1789355710234-5z43k",
+    "timestamp": "2026-09-14T03:15:10.234Z",
+    "userId": "keuangan",
+    "userName": "PIC Keuangan & Umum",
+    "userDepartment": "Keuangan & Umum",
+    "userRole": "USER",
+    "action": "PASSWORD_RESET",
+    "details": "Password untuk akun PIC Keuangan & Umum (keuangan) berhasil diperbarui/direset",
+    "targetId": "usr-ku"
+  },
+  {
+    "id": "log-1789355707268-eusw2",
+    "timestamp": "2026-09-14T03:15:07.268Z",
+    "userId": "admin",
+    "userName": "Administrator Si APIN (Master)",
+    "userDepartment": "Keuangan & Umum",
+    "userRole": "ADMIN",
+    "action": "LOGIN",
+    "details": "User Administrator Si APIN (Master) (Keuangan & Umum) berhasil login ke sistem",
+    "targetId": "admin"
+  },
+  {
+    "id": "log-1789355699738-xwwq7",
+    "timestamp": "2026-09-14T03:14:59.738Z",
+    "userId": "keuangan",
+    "userName": "PIC Keuangan & Umum",
+    "userDepartment": "Keuangan & Umum",
+    "userRole": "USER",
+    "action": "LOGIN",
+    "details": "User PIC Keuangan & Umum (Keuangan & Umum) berhasil login ke sistem",
+    "targetId": "keuangan"
+  },
+  {
+    "id": "log-1789355696208-0ii63",
+    "timestamp": "2026-09-14T03:14:56.208Z",
+    "userId": "keuangan",
+    "userName": "PIC Keuangan & Umum",
+    "userDepartment": "Keuangan & Umum",
+    "userRole": "USER",
+    "action": "LOGIN",
+    "details": "User PIC Keuangan & Umum (Keuangan & Umum) berhasil login ke sistem",
+    "targetId": "keuangan"
+  },
+  {
+    "id": "log-1789355612903-bzizu",
+    "timestamp": "2026-09-14T03:13:32.903Z",
+    "userId": "keuangan",
+    "userName": "PIC Keuangan & Umum",
+    "userDepartment": "Keuangan & Umum",
+    "userRole": "USER",
+    "action": "LOGIN",
+    "details": "User PIC Keuangan & Umum (Keuangan & Umum) berhasil login ke sistem",
+    "targetId": "keuangan"
+  },
+  {
+    "id": "log-1789355463898-pxzer",
+    "timestamp": "2026-09-14T03:11:03.898Z",
+    "userId": "keuangan",
+    "userName": "PIC Keuangan & Umum",
+    "userDepartment": "Keuangan & Umum",
+    "userRole": "USER",
+    "action": "PASSWORD_RESET",
+    "details": "Password untuk akun PIC Keuangan & Umum (keuangan) berhasil diperbarui/direset",
+    "targetId": "usr-ku"
+  },
+  {
     "id": "log-1789024889563-ctnv7",
     "timestamp": "2026-09-10T07:21:29.563Z",
     "userId": "operasi",

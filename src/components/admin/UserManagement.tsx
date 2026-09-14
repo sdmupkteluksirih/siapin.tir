@@ -50,6 +50,8 @@ export const UserManagement: React.FC = () => {
   const [editEmail, setEditEmail] = useState('');
   const [editDepartment, setEditDepartment] = useState('Operasi');
   const [editRole, setEditRole] = useState<'ADMIN' | 'USER'>('USER');
+  const [editPassword, setEditPassword] = useState('');
+  const [showEditPassword, setShowEditPassword] = useState(false);
 
   // Revealed passwords state for admin review
   const [revealedPasswords, setRevealedPasswords] = useState<Record<string, boolean>>({});
@@ -162,9 +164,11 @@ export const UserManagement: React.FC = () => {
     setEditEmail(user.email || '');
     setEditDepartment(user.department);
     setEditRole(user.role);
+    setEditPassword('');
+    setShowEditPassword(false);
   };
 
-  const handleEditUserSubmit = (e: React.FormEvent) => {
+  const handleEditUserSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedUserForEdit) return;
     if (!editFullName.trim()) {
@@ -190,19 +194,36 @@ export const UserManagement: React.FC = () => {
       }
     }
 
+    const cleanNewPass = editPassword.trim();
+    if (cleanNewPass && cleanNewPass.length < 4) {
+      showNotificationMsg('Password baru minimal harus 4 karakter.', 'error');
+      return;
+    }
+
     // Prevent changing master admin role to non-admin
     const finalRole = selectedUserForEdit.username === 'admin' ? 'ADMIN' : editRole;
     const finalUsername = selectedUserForEdit.username === 'admin' ? 'admin' : cleanUsername;
 
-    authStorage.updateUser(selectedUserForEdit.id, {
+    const updates: any = {
       username: finalUsername,
       name: editFullName.trim(),
       email: editEmail.trim() || undefined,
       department: editDepartment,
       role: finalRole
-    });
+    };
 
-    showNotificationMsg(`Data akun "${finalUsername}" (User ID, Email, Nama & Role) berhasil diperbarui secara realtime.`);
+    if (cleanNewPass) {
+      updates.password = cleanNewPass;
+    }
+
+    await authStorage.updateUserAsync(selectedUserForEdit.id, updates);
+
+    if (cleanNewPass) {
+      await authStorage.resetPasswordAsync(selectedUserForEdit.id, cleanNewPass);
+      showNotificationMsg(`Data akun "${finalUsername}" dan Password Baru berhasil diperbarui & disimpan ke server.`);
+    } else {
+      showNotificationMsg(`Data akun "${finalUsername}" (User ID, Email, Nama & Role) berhasil diperbarui secara realtime.`);
+    }
     setSelectedUserForEdit(null);
   };
 
@@ -869,6 +890,36 @@ export const UserManagement: React.FC = () => {
                     <option key={d} value={d}>{d}</option>
                   ))}
                 </select>
+              </div>
+
+              {/* Password update field in Edit Modal */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-700 block uppercase tracking-wider">
+                    Ganti Password Baru (Opsional)
+                  </label>
+                  <span className="text-[10px] text-slate-400 font-medium">Kosongkan jika tidak diubah</span>
+                </div>
+                <div className="relative">
+                  <input
+                    type={showEditPassword ? 'text' : 'password'}
+                    value={editPassword}
+                    onChange={(e) => setEditPassword(e.target.value)}
+                    placeholder="Ketik password baru jika ingin mengubah (min. 4 karakter)"
+                    className="w-full py-2.5 px-3 pr-10 rounded-xl border border-slate-200 text-xs sm:text-sm font-mono bg-slate-50/50 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowEditPassword(!showEditPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                    title={showEditPassword ? 'Sembunyikan password' : 'Lihat password'}
+                  >
+                    {showEditPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                <p className="text-[10px] text-slate-400">
+                  Password yang diisi di sini akan langsung aktif dan tersinkronisasi ke server & seluruh perangkat.
+                </p>
               </div>
 
               <div className="space-y-1.5">

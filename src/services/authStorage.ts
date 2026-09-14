@@ -127,7 +127,7 @@ export const DEFAULT_USERS: UserAccount[] = [
     role: 'USER',
     department: 'Keuangan & Umum',
     email: 'keuangan.teluksirih@gmail.com',
-    password: 'user123',
+    password: 'PLNip@KU2026',
     avatarText: 'KU',
     lastLogin: '2026-08-19T13:45:00.000Z',
     createdAt: '2026-01-01T00:00:00.000Z'
@@ -684,6 +684,26 @@ export const authStorage = {
       return true;
     }
     return false;
+  },
+
+  async updateUserAsync(userId: string, updates: Partial<Omit<UserAccount, 'id' | 'createdAt'>>): Promise<boolean> {
+    const success = this.updateUser(userId, updates);
+    if (!success) return false;
+
+    if (updates.password && updates.password.trim().length >= 4) {
+      try {
+        await fetch('/api/users/reset-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId, newPassword: updates.password.trim() })
+        });
+      } catch {
+        // Fallback to sync
+      }
+    }
+
+    await syncUsersToServer(this.getAllUsers());
+    return true;
   },
 
   addUser(userData: Omit<UserAccount, 'id' | 'createdAt'>): UserAccount {
