@@ -55,6 +55,7 @@ export const UserManagement: React.FC = () => {
 
   // Revealed passwords state for admin review
   const [revealedPasswords, setRevealedPasswords] = useState<Record<string, boolean>>({});
+  const [isSyncing, setIsSyncing] = useState(false);
 
   useEffect(() => {
     const refreshData = () => {
@@ -62,9 +63,23 @@ export const UserManagement: React.FC = () => {
       setCurrentUser(authStorage.getCurrentUser());
     };
     refreshData();
+    authStorage.forceSyncFromServer().then(refreshed => setUsers(refreshed)).catch(() => {});
     const unsub = authStorage.subscribe(refreshData);
     return () => unsub();
   }, []);
+
+  const handleForceSync = async () => {
+    setIsSyncing(true);
+    try {
+      const refreshed = await authStorage.forceSyncFromServer();
+      setUsers(refreshed);
+      showNotificationMsg('Data 14 akun berhasil disinkronkan langsung dengan server pusat!');
+    } catch {
+      showNotificationMsg('Gagal menyinkronkan data dengan server.', 'error');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const showNotificationMsg = (message: string, type: 'success' | 'error' = 'success') => {
     setNotification({ type, message });
@@ -281,7 +296,18 @@ export const UserManagement: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={handleForceSync}
+            disabled={isSyncing}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-xs font-semibold text-indigo-700 transition-colors cursor-pointer disabled:opacity-50"
+            title="Tarik dan sinkronkan seluruh data 14 akun terbaru dari database server pusat"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+            <span>{isSyncing ? 'Menyinkronkan...' : 'Sinkronkan Data Server'}</span>
+          </button>
+
           <button
             type="button"
             onClick={handleResetAllToFactory}

@@ -1,5 +1,27 @@
 [
   {
+    "id": "log-1789455538490-ug6dy",
+    "timestamp": "2026-09-15T06:58:58.490Z",
+    "userId": "admin",
+    "userName": "Administrator",
+    "userDepartment": "Keuangan & Umum",
+    "userRole": "ADMIN",
+    "action": "PASSWORD_RESET",
+    "details": "Batch update: Memperbarui password dan email untuk 1 akun user",
+    "targetId": "all-users"
+  },
+  {
+    "id": "log-1789455535080-0aqd9",
+    "timestamp": "2026-09-15T06:58:55.080Z",
+    "userId": "admin",
+    "userName": "Administrator",
+    "userDepartment": "Keuangan & Umum",
+    "userRole": "ADMIN",
+    "action": "PASSWORD_RESET",
+    "details": "Batch update: Memperbarui password dan email untuk 1 akun user",
+    "targetId": "all-users"
+  },
+  {
     "id": "log-1789357616580-ql1y9",
     "timestamp": "2026-09-14T03:46:56.580Z",
     "userId": "operasi",

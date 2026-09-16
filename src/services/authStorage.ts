@@ -208,57 +208,34 @@ function notifyAuthSubscribers() {
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new Event(AUTH_LISTEN_EVENT));
     try {
-      authBroadcast?.postMessage({ type: 'AUTH_USERS_CHANGED', timestamp: Date.now() });
+      authBroadcast?.postMessage({ 
+        type: 'AUTH_USERS_CHANGED', 
+        timestamp: Date.now(),
+        users: cachedUsers 
+      });
     } catch {
       // Ignore
     }
   }
 }
 
-async function fetchUsersFromServer() {
-  if (typeof window === 'undefined') return;
+async function fetchUsersFromServer(): Promise<UserAccount[]> {
+  if (typeof window === 'undefined') return cachedUsers || DEFAULT_USERS;
   try {
     const res = await fetch('/api/users');
-    if (!res.ok) return;
+    if (!res.ok) return cachedUsers || DEFAULT_USERS;
     const serverUsers: UserAccount[] = await res.json();
-    if (!Array.isArray(serverUsers) || serverUsers.length === 0) return;
+    if (!Array.isArray(serverUsers) || serverUsers.length === 0) return cachedUsers || DEFAULT_USERS;
 
-    const localUsers = authStorage.getAllUsers();
-
-    // Server data is authoritative. When server sends user list, update local cache directly
-    const mergedUsers: UserAccount[] = serverUsers.map(sUser => {
-      const localMatch = localUsers.find(
-        l => l.id === sUser.id || (l.username && l.username.toLowerCase() === sUser.username.toLowerCase())
-      );
-      return {
-        ...(localMatch || {}),
-        ...sUser,
-        // Server password always takes precedence
-        password: sUser.password || localMatch?.password || 'user123',
-        email: sUser.email || localMatch?.email
-      };
-    });
-
-    // Also keep any custom user created locally that might not yet be in server
-    let localHasCustomUsers = false;
-    localUsers.forEach(lUser => {
-      if (!mergedUsers.some(m => m.id === lUser.id || (m.username && m.username.toLowerCase() === lUser.username.toLowerCase()))) {
-        mergedUsers.push(lUser);
-        localHasCustomUsers = true;
-      }
-    });
-
-    cachedUsers = mergedUsers;
+    cachedUsers = serverUsers;
     try {
-      localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(mergedUsers));
+      localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(serverUsers));
     } catch {}
     notifyAuthSubscribers();
-
-    if (localHasCustomUsers) {
-      syncUsersToServer(mergedUsers);
-    }
-  } catch {
-    // Ignore network error
+    return serverUsers;
+  } catch (err) {
+    console.warn('Gagal memuat data pengguna dari server:', err);
+    return cachedUsers || DEFAULT_USERS;
   }
 }
 
@@ -297,15 +274,13 @@ function setupAuthRealtimeSync() {
   if (authBroadcast) {
     authBroadcast.onmessage = (event) => {
       if (event.data?.type === 'AUTH_USERS_CHANGED') {
-        const stored = localStorage.getItem(USERS_STORAGE_KEY);
-        if (stored) {
+        if (Array.isArray(event.data.users) && event.data.users.length > 0) {
+          cachedUsers = event.data.users;
           try {
-            cachedUsers = JSON.parse(stored);
-            if (typeof window !== 'undefined') {
-              window.dispatchEvent(new Event(AUTH_LISTEN_EVENT));
-            }
-          } catch {
-            fetchUsersFromServer();
+            localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(event.data.users));
+          } catch {}
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new Event(AUTH_LISTEN_EVENT));
           }
         } else {
           fetchUsersFromServer();
@@ -683,20 +658,117 @@ export const authStorage = {
     return false;
   },
 
+  async forceSyncFromServer(): Promise<UserAccount[]> {
+    return await fetchUsersFromServer();
+  },
+
+  async saveUserAccountAsync(userId: string, data: { email?: string; password?: string; name?: string; role?: 'ADMIN' | 'USER' }): Promise<boolean> {
+    const cleanUserId = userId.trim();
+    const cleanPass = data.password ? data.password.trim() : undefined;
+    const cleanEmail = data.email !== undefined ? data.email.trim() : undefined;
+
+    // Update local cache optimistically
+    const currentUsers = this.getAllUsers();
+    let updatedLocal = false;
+    const nextUsers = currentUsers.map(u => {
+      if (u.id === cleanUserId || (u.username && u.username.toLowerCase() === cleanUserId.toLowerCase())) {
+        updatedLocal = true;
+        return {
+          ...u,
+          ...(cleanEmail !== undefined ? { email: cleanEmail || undefined } : {}),
+          ...(cleanPass && cleanPass.length >= 4 ? { password: cleanPass } : {}),
+          ...(data.name ? { name: data.name.trim() } : {}),
+          ...(data.role ? { role: data.role } : {})
+        };
+      }
+      return u;
+    });
+
+    if (updatedLocal) {
+      cachedUsers = nextUsers;
+      try {
+        localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(nextUsers));
+      } catch {}
+      // Also update currentUser session if it's the active logged in user
+      const curr = this.getCurrentUser();
+      if (curr && (curr.id === cleanUserId || (curr.username && curr.username.toLowerCase() === cleanUserId.toLowerCase()))) {
+        const updatedCurr = {
+          ...curr,
+          ...(cleanEmail !== undefined ? { email: cleanEmail || undefined } : {}),
+          ...(cleanPass && cleanPass.length >= 4 ? { password: cleanPass } : {})
+        };
+        try {
+          localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(updatedCurr));
+        } catch {}
+      }
+      notifyAuthSubscribers();
+    }
+
+    // Direct authoritative call to /api/users/update
+    try {
+      const res = await fetch('/api/users/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: cleanUserId,
+          email: cleanEmail,
+          password: cleanPass,
+          name: data.name,
+          role: data.role
+        })
+      });
+
+      if (res.ok) {
+        const json = await res.json();
+        if (json.user) {
+          const refreshed = this.getAllUsers().map(u => 
+            (u.id === json.user.id || (u.username && u.username.toLowerCase() === json.user.username?.toLowerCase()))
+              ? { ...u, ...json.user }
+              : u
+          );
+          cachedUsers = refreshed;
+          try {
+            localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(refreshed));
+          } catch {}
+          notifyAuthSubscribers();
+        }
+        return true;
+      } else {
+        // Fallback to batch-update
+        return await this.batchUpdateUsersAsync([{
+          id: cleanUserId,
+          email: cleanEmail,
+          password: cleanPass,
+          name: data.name,
+          role: data.role
+        }]);
+      }
+    } catch {
+      return updatedLocal;
+    }
+  },
+
   async updateUserAsync(userId: string, updates: Partial<Omit<UserAccount, 'id' | 'createdAt'>>): Promise<boolean> {
     const success = this.updateUser(userId, updates);
     if (!success) return false;
 
-    if (updates.password && updates.password.trim().length >= 4) {
-      try {
-        await fetch('/api/users/reset-password', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId, newPassword: updates.password.trim() })
-        });
-      } catch {
-        // Fallback to sync
+    try {
+      const res = await fetch('/api/users/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          email: updates.email,
+          password: updates.password,
+          name: updates.name,
+          role: updates.role
+        })
+      });
+      if (res.ok) {
+        return true;
       }
+    } catch {
+      // Fallback
     }
 
     await syncUsersToServer(this.getAllUsers());

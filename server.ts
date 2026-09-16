@@ -742,11 +742,102 @@ app.get('/api/users', (req, res) => {
 
 app.post('/api/users/sync', (req, res) => {
   const { users } = req.body;
-  if (Array.isArray(users)) {
-    writeUsers(users);
-    return res.json({ success: true, count: users.length });
+  if (!Array.isArray(users)) {
+    return res.status(400).json({ error: 'Array users dibutuhkan' });
   }
-  res.status(400).json({ error: 'Array users dibutuhkan' });
+
+  const currentUsers = readUsers();
+  // Safe merge: update existing without wiping passwords if incoming has empty password
+  const mergedList = currentUsers.map((existing: any) => {
+    const incoming = users.find((u: any) => 
+      u.id === existing.id || 
+      (u.username && u.username.toLowerCase() === existing.username?.toLowerCase())
+    );
+    if (!incoming) return existing;
+    return {
+      ...existing,
+      email: incoming.email !== undefined ? incoming.email : existing.email,
+      password: (incoming.password && String(incoming.password).trim().length >= 4) ? String(incoming.password).trim() : existing.password,
+      name: incoming.name || existing.name,
+      department: incoming.department || existing.department,
+      role: incoming.role || existing.role
+    };
+  });
+
+  // Also include any new users that were created
+  users.forEach((incoming: any) => {
+    if (!mergedList.some((m: any) => m.id === incoming.id || (m.username && m.username.toLowerCase() === incoming.username?.toLowerCase()))) {
+      mergedList.push(incoming);
+    }
+  });
+
+  writeUsers(mergedList);
+  return res.json({ success: true, count: mergedList.length, users: mergedList });
+});
+
+// Single user update endpoint (Email, Password, Name, Role)
+app.post('/api/users/update', (req, res) => {
+  const { userId, email, password, name, role } = req.body;
+  if (!userId) {
+    return res.status(400).json({ error: 'userId wajib diisi' });
+  }
+
+  const cleanUserId = String(userId).trim();
+  const currentUsers = readUsers();
+  let found = false;
+  let targetUser: any = null;
+
+  const updatedList = currentUsers.map((existing: any) => {
+    if (
+      existing.id === cleanUserId ||
+      (existing.username && existing.username.toLowerCase() === cleanUserId.toLowerCase()) ||
+      (existing.email && existing.email.toLowerCase() === cleanUserId.toLowerCase())
+    ) {
+      found = true;
+      const result = { ...existing };
+      if (email !== undefined) {
+        result.email = String(email).trim() || undefined;
+      }
+      if (password && String(password).trim().length >= 4) {
+        result.password = String(password).trim();
+      }
+      if (name && String(name).trim()) {
+        result.name = String(name).trim();
+      }
+      if (role && (role === 'ADMIN' || role === 'USER') && existing.username !== 'admin') {
+        result.role = role;
+      }
+      targetUser = result;
+      return result;
+    }
+    return existing;
+  });
+
+  if (!found || !targetUser) {
+    return res.status(404).json({ error: `User dengan ID/username "${cleanUserId}" tidak ditemukan` });
+  }
+
+  writeUsers(updatedList);
+
+  // Record audit log
+  try {
+    const logItem = {
+      id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      timestamp: new Date().toISOString(),
+      userId: targetUser.username || targetUser.id,
+      userName: targetUser.name,
+      userDepartment: targetUser.department,
+      userRole: targetUser.role,
+      action: 'PASSWORD_RESET',
+      details: `Perubahan data akun: Password/Email untuk ${targetUser.name} (${targetUser.username}) berhasil diperbarui`,
+      targetId: targetUser.id
+    };
+    const currentLogs = readActivityLogs();
+    currentLogs.unshift(logItem);
+    writeActivityLogs(currentLogs);
+  } catch {}
+
+  res.json({ success: true, user: targetUser, message: 'Data akun berhasil diperbarui di server pusat' });
 });
 
 app.post('/api/users/batch-update', (req, res) => {

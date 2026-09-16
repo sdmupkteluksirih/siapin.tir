@@ -39,7 +39,9 @@ import {
   ExternalLink,
   Loader2,
   Save,
-  CheckCircle
+  CheckCircle,
+  RefreshCw,
+  Search
 } from 'lucide-react';
 
 export const AdminSettings: React.FC = () => {
@@ -50,12 +52,14 @@ export const AdminSettings: React.FC = () => {
   // Unified Accounts state (Admin & Bagian)
   const [allUsers, setAllUsers] = useState<UserAccount[]>(() => authStorage.getAllUsers());
   const [accountFilter, setAccountFilter] = useState<'ALL' | 'ADMIN' | 'USER'>('ALL');
-  const [showExistingPass, setShowExistingPass] = useState<Record<string, boolean>>({});
-  const [newPassMap, setNewPassMap] = useState<Record<string, string>>({});
-  const [showNewPassMap, setShowNewPassMap] = useState<Record<string, boolean>>({});
+  const [searchAccountQuery, setSearchAccountQuery] = useState('');
+  const [passMap, setPassMap] = useState<Record<string, string>>({});
+  const [showPassMap, setShowPassMap] = useState<Record<string, boolean>>({});
   const [emailMap, setEmailMap] = useState<Record<string, string>>({});
-  const [isSavingPassMap, setIsSavingPassMap] = useState<Record<string, boolean>>({});
-  const [userSaveSuccessMap, setUserSaveSuccessMap] = useState<Record<string, string>>({});
+  const [isSavingMap, setIsSavingMap] = useState<Record<string, boolean>>({});
+  const [savedStatusMap, setSavedStatusMap] = useState<Record<string, string>>({});
+  const [isSyncingAll, setIsSyncingAll] = useState(false);
+  const [syncToast, setSyncToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const autoSaveTimeouts = useRef<Record<string, NodeJS.Timeout>>({});
 
   // WhatsApp Admin Contacts state
@@ -73,12 +77,41 @@ export const AdminSettings: React.FC = () => {
   const [editContactRole, setEditContactRole] = useState('');
 
   useEffect(() => {
+    // Initial fetch from server on mount
+    authStorage.forceSyncFromServer().then(refreshed => {
+      setAllUsers(refreshed);
+      setPassMap(prev => {
+        const next = { ...prev };
+        refreshed.forEach(u => {
+          if (next[u.id] === undefined) next[u.id] = u.password;
+        });
+        return next;
+      });
+      setEmailMap(prev => {
+        const next = { ...prev };
+        refreshed.forEach(u => {
+          if (next[u.id] === undefined) next[u.id] = u.email || '';
+        });
+        return next;
+      });
+    }).catch(() => {});
+
     const unsubTheme = themeStorage.subscribe((updated) => {
       setBgSettings(updated);
     });
     const unsubAuth = authStorage.subscribe(() => {
       const users = authStorage.getAllUsers();
       setAllUsers(users);
+      setPassMap(prev => {
+        const next = { ...prev };
+        users.forEach(u => {
+          // If not currently edited, keep synced with server
+          if (next[u.id] === undefined) {
+            next[u.id] = u.password;
+          }
+        });
+        return next;
+      });
       setEmailMap(prev => {
         const next = { ...prev };
         users.forEach(u => {
@@ -96,8 +129,17 @@ export const AdminSettings: React.FC = () => {
     };
   }, []);
 
-  // Initialize email map on mount
+  // Initialize maps when allUsers changes
   useEffect(() => {
+    setPassMap(prev => {
+      const next = { ...prev };
+      allUsers.forEach(u => {
+        if (next[u.id] === undefined) {
+          next[u.id] = u.password;
+        }
+      });
+      return next;
+    });
     setEmailMap(prev => {
       const next = { ...prev };
       allUsers.forEach(u => {
@@ -109,58 +151,78 @@ export const AdminSettings: React.FC = () => {
     });
   }, [allUsers]);
 
-  const handleToggleExistingPass = (userId: string) => {
-    setShowExistingPass(prev => ({ ...prev, [userId]: !prev[userId] }));
+  const handleTogglePass = (userId: string) => {
+    setShowPassMap(prev => ({ ...prev, [userId]: !prev[userId] }));
   };
 
-  const handleToggleNewPass = (userId: string) => {
-    setShowNewPassMap(prev => ({ ...prev, [userId]: !prev[userId] }));
+  // Force sync from server database
+  const handleSyncAllAccounts = async () => {
+    setIsSyncingAll(true);
+    try {
+      const refreshed = await authStorage.forceSyncFromServer();
+      setAllUsers(refreshed);
+      setPassMap(prev => {
+        const next = { ...prev };
+        refreshed.forEach(u => {
+          next[u.id] = u.password;
+        });
+        return next;
+      });
+      setEmailMap(prev => {
+        const next = { ...prev };
+        refreshed.forEach(u => {
+          next[u.id] = u.email || '';
+        });
+        return next;
+      });
+      setSyncToast({
+        message: 'Seluruh 14 akun berhasil disinkronkan langsung dengan server pusat!',
+        type: 'success'
+      });
+    } catch {
+      setSyncToast({
+        message: 'Gagal menyinkronkan dengan server.',
+        type: 'error'
+      });
+    } finally {
+      setIsSyncingAll(false);
+      setTimeout(() => setSyncToast(null), 4000);
+    }
   };
 
-  // Auto-save or manual save account (Email + Password if filled)
-  const handleAutoSaveAccount = async (user: UserAccount, overridePass?: string, overrideEmail?: string) => {
+  // Auto-save or manual save account (Email + Password)
+  const handleSaveAccount = async (user: UserAccount, overridePass?: string, overrideEmail?: string) => {
     const pKey = `pass-${user.id}`;
     const eKey = `email-${user.id}`;
     if (autoSaveTimeouts.current[pKey]) clearTimeout(autoSaveTimeouts.current[pKey]);
     if (autoSaveTimeouts.current[eKey]) clearTimeout(autoSaveTimeouts.current[eKey]);
 
-    const newPass = (overridePass !== undefined ? overridePass : (newPassMap[user.id] || '')).trim();
-    const currentEmail = (overrideEmail !== undefined ? overrideEmail : (emailMap[user.id] !== undefined ? emailMap[user.id] : (user.email || ''))).trim();
+    const activePass = (overridePass !== undefined ? overridePass : (passMap[user.id] ?? user.password)).trim();
+    const activeEmail = (overrideEmail !== undefined ? overrideEmail : (emailMap[user.id] ?? (user.email || ''))).trim();
 
-    const hasValidPass = Boolean(newPass && newPass.length >= 4);
-    const hasEmailChange = currentEmail !== (user.email || '').trim();
-
-    if (!hasValidPass && !hasEmailChange) {
-      return;
-    }
-
-    setIsSavingPassMap(prev => ({ ...prev, [user.id]: true }));
+    setIsSavingMap(prev => ({ ...prev, [user.id]: true }));
     try {
-      const updates = {
-        id: user.id,
-        email: currentEmail || undefined,
-        ...(hasValidPass ? { password: newPass } : {})
-      };
+      const success = await authStorage.saveUserAccountAsync(user.id, {
+        password: activePass.length >= 4 ? activePass : undefined,
+        email: activeEmail
+      });
 
-      const success = await authStorage.batchUpdateUsersAsync([updates]);
-      setIsSavingPassMap(prev => ({ ...prev, [user.id]: false }));
+      setIsSavingMap(prev => ({ ...prev, [user.id]: false }));
 
       if (success) {
-        setUserSaveSuccessMap(prev => ({ ...prev, [user.id]: 'Otomatis Tersimpan ke Server' }));
-        if (hasValidPass) {
-          setNewPassMap(prev => ({ ...prev, [user.id]: '' }));
-        }
-        setAllUsers(authStorage.getAllUsers());
+        setSavedStatusMap(prev => ({ ...prev, [user.id]: 'Tersimpan ke Server Pusat' }));
+        const currentUsers = authStorage.getAllUsers();
+        setAllUsers(currentUsers);
         setTimeout(() => {
-          setUserSaveSuccessMap(prev => {
+          setSavedStatusMap(prev => {
             const next = { ...prev };
             delete next[user.id];
             return next;
           });
-        }, 4000);
+        }, 3500);
       }
     } catch {
-      setIsSavingPassMap(prev => ({ ...prev, [user.id]: false }));
+      setIsSavingMap(prev => ({ ...prev, [user.id]: false }));
     }
   };
 
@@ -517,9 +579,9 @@ export const AdminSettings: React.FC = () => {
         </div>
       </div>
 
-      {/* Card: Manajemen Akun Pengguna & Administrator Terpadu (Tanpa Duplikasi) */}
+      {/* Card: Manajemen Akun Pengguna & Administrator Terpadu (14 Akun) */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-5">
-        {/* Header with Auto-Save status badge */}
+        {/* Header with Live Sync Status & Sync All Button */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-100">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold shadow-2xs">
@@ -529,76 +591,133 @@ export const AdminSettings: React.FC = () => {
               <h3 className="font-bold text-slate-900 text-base flex items-center gap-2 flex-wrap">
                 <span>Manajemen Akses & Kata Sandi (14 Akun Lengkap)</span>
                 <span className="text-xs bg-indigo-50 text-indigo-700 font-bold px-2.5 py-0.5 rounded-full border border-indigo-200">
-                  {allUsers.length} Akun
+                  {allUsers.length} Akun Terdaftar
                 </span>
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">
-                Kelola email notifikasi & kata sandi seluruh akun. Setiap perubahan langsung tersimpan otomatis ke database server.
+                Kelola email & kata sandi seluruh akun. Setiap perubahan tersimpan otomatis ke server pusat dan tersinkron ke semua admin & user.
               </p>
             </div>
           </div>
 
-          {/* Realtime Auto-Save Status Badge */}
-          <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold shadow-2xs self-start lg:self-center">
-            <span className="relative flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-            </span>
-            <Sparkles className="w-4 h-4 text-emerald-600" />
-            <span>Auto-Save Aktif (Otomatis Tersimpan)</span>
+          {/* Sync All Button & Server Status */}
+          <div className="flex items-center gap-2.5 flex-wrap self-start lg:self-center">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold shadow-2xs">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <span>Server Pusat Aktif</span>
+            </div>
+
+            <button
+              type="button"
+              id="btn-sync-all-accounts"
+              onClick={handleSyncAllAccounts}
+              disabled={isSyncingAll}
+              className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs font-bold shadow-md shadow-indigo-600/20 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+              title="Tarik dan sinkronkan seluruh data akun terbaru dari server database pusat"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isSyncingAll ? 'animate-spin' : ''}`} />
+              <span>{isSyncingAll ? 'Menyinkronkan...' : 'Sinkronkan Data Pusat (Sync All)'}</span>
+            </button>
           </div>
         </div>
+
+        {/* Sync Toast Feedback */}
+        {syncToast && (
+          <div className={`p-3.5 rounded-xl text-xs font-bold flex items-center justify-between gap-3 animate-in fade-in ${
+            syncToast.type === 'success'
+              ? 'bg-emerald-50 text-emerald-900 border border-emerald-200'
+              : 'bg-rose-50 text-rose-900 border border-rose-200'
+          }`}>
+            <div className="flex items-center gap-2">
+              <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>{syncToast.message}</span>
+            </div>
+            <button 
+              type="button" 
+              onClick={() => setSyncToast(null)} 
+              className="text-slate-400 hover:text-slate-700 cursor-pointer p-1"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
 
         {/* Informative Guidance Banner */}
         <div className="p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-200 text-emerald-950 text-xs flex items-start gap-2.5 leading-relaxed">
           <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
           <div className="space-y-1">
             <p className="font-bold text-emerald-900">
-              Auto-Save Otomatis Aktif — Terhubung Langsung ke Database Server:
+              Sistem Auto-Sync & Auto-Save Terintegrasi Server:
             </p>
             <p className="text-slate-700">
-              • Begitu admin mengedit <strong>Kata Sandi</strong> atau <strong>Email</strong> pada akun manapun, sistem akan <strong>langsung menyimpannya secara otomatis</strong> ke server tanpa perlu menekan tombol simpan manual.
+              • Ketika admin mengubah <strong>Password</strong> atau <strong>Email</strong> pada akun manapun, sistem akan langsung menyimpannya ke server pusat.
               <br />
-              • Pengguna (user) dapat langsung login saat itu juga di komputer/perangkat lain dengan kredensial terbarunya (bisa menggunakan <strong>User ID</strong> maupun <strong>Email</strong>).
+              • Semua admin dan tab browser lain akan otomatis menerima pembaruan kredensial tanpa perlu refresh manual.
             </p>
           </div>
         </div>
 
-        {/* Filter Tabs */}
-        <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl text-xs font-semibold self-start">
-          <button
-            type="button"
-            onClick={() => setAccountFilter('ALL')}
-            className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
-              accountFilter === 'ALL'
-                ? 'bg-white text-indigo-700 shadow-2xs font-bold'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            Semua ({allUsers.length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setAccountFilter('ADMIN')}
-            className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
-              accountFilter === 'ADMIN'
-                ? 'bg-white text-indigo-700 shadow-2xs font-bold'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            Admin Sistem ({allUsers.filter(u => u.role === 'ADMIN').length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setAccountFilter('USER')}
-            className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
-              accountFilter === 'USER'
-                ? 'bg-white text-indigo-700 shadow-2xs font-bold'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            Akun Bagian ({allUsers.filter(u => u.role !== 'ADMIN').length})
-          </button>
+        {/* Filter Tabs & Search Bar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+          <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl text-xs font-semibold self-start">
+            <button
+              type="button"
+              onClick={() => setAccountFilter('ALL')}
+              className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                accountFilter === 'ALL'
+                  ? 'bg-white text-indigo-700 shadow-2xs font-bold'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Semua ({allUsers.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setAccountFilter('ADMIN')}
+              className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                accountFilter === 'ADMIN'
+                  ? 'bg-white text-indigo-700 shadow-2xs font-bold'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Admin Sistem ({allUsers.filter(u => u.role === 'ADMIN').length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setAccountFilter('USER')}
+              className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                accountFilter === 'USER'
+                  ? 'bg-white text-indigo-700 shadow-2xs font-bold'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Akun Bagian ({allUsers.filter(u => u.role !== 'ADMIN').length})
+            </button>
+          </div>
+
+          {/* Quick Search */}
+          <div className="relative w-full sm:w-64">
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={searchAccountQuery}
+              onChange={(e) => setSearchAccountQuery(e.target.value)}
+              placeholder="Cari ID, nama, bagian..."
+              className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 text-slate-900 shadow-2xs"
+            />
+            {searchAccountQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchAccountQuery('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* User Account Cards List */}
@@ -609,17 +728,29 @@ export const AdminSettings: React.FC = () => {
               if (accountFilter === 'USER') return user.role !== 'ADMIN';
               return true;
             })
+            .filter((user) => {
+              if (!searchAccountQuery.trim()) return true;
+              const q = searchAccountQuery.toLowerCase().trim();
+              return (
+                user.name.toLowerCase().includes(q) ||
+                user.username.toLowerCase().includes(q) ||
+                user.department.toLowerCase().includes(q) ||
+                (user.email || '').toLowerCase().includes(q)
+              );
+            })
             .map((user) => {
               const isAdmin = user.role === 'ADMIN';
-              const userEmailVal = emailMap[user.id] !== undefined ? emailMap[user.id] : (user.email || '');
-              const isEmailModified = emailMap[user.id] !== undefined && emailMap[user.id].trim() !== (user.email || '').trim();
-              const isPassModified = Boolean((newPassMap[user.id] || '').trim());
+              const currentEmail = emailMap[user.id] !== undefined ? emailMap[user.id] : (user.email || '');
+              const currentPass = passMap[user.id] !== undefined ? passMap[user.id] : user.password;
+              const isEmailChanged = currentEmail.trim() !== (user.email || '').trim();
+              const isPassChanged = currentPass.trim() !== user.password.trim();
+              const hasModifications = isEmailChanged || isPassChanged;
 
               return (
                 <div 
                   key={user.id} 
                   id={`account-row-${user.username}`}
-                  className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 hover:bg-slate-50 transition-all space-y-3.5 shadow-2xs"
+                  className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 hover:bg-slate-50 transition-all space-y-3 shadow-2xs"
                 >
                   {/* Account Header info */}
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -670,7 +801,7 @@ export const AdminSettings: React.FC = () => {
                           )}
 
                           <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded border border-emerald-200 flex items-center gap-1">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                             Aktif
                           </span>
                         </div>
@@ -685,27 +816,27 @@ export const AdminSettings: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Saved Status Indicator */}
-                    {userSaveSuccessMap[user.id] && (
+                    {/* Status Badge */}
+                    {savedStatusMap[user.id] && (
                       <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-3 py-1 rounded-lg border border-emerald-300 flex items-center gap-1.5 animate-in fade-in self-start sm:self-center">
                         <CheckCircle className="w-4 h-4" />
-                        <span>{userSaveSuccessMap[user.id]}</span>
+                        <span>{savedStatusMap[user.id]}</span>
                       </span>
                     )}
                   </div>
 
-                  {/* 3 Grid Box: EMAIL, PASSWORD EKSISTING, dan PASSWORD TERBARU */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
-                    {/* BOX 1: Email Akun & Notifikasi */}
-                    <div className="p-3 rounded-xl border border-slate-200 bg-white shadow-2xs space-y-1.5 flex flex-col justify-between">
+                  {/* 2 Clean Columns: EMAIL & PASSWORD */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                    {/* KOLOM 1: Email Akun & Notifikasi */}
+                    <div className="p-3 rounded-xl border border-slate-200 bg-white shadow-2xs space-y-1.5">
                       <div className="flex items-center justify-between">
                         <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
                           <Mail className="w-3.5 h-3.5 text-indigo-600" />
                           <span>Email Akun & Notifikasi</span>
                         </span>
-                        {isEmailModified && (
-                          <span className="text-[10px] text-amber-600 font-bold bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
-                            Diubah
+                        {isEmailChanged && (
+                          <span className="text-[10px] text-amber-700 font-bold bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                            Diubah (Auto-Save)
                           </span>
                         )}
                       </div>
@@ -713,7 +844,7 @@ export const AdminSettings: React.FC = () => {
                       <div className="relative">
                         <input
                           type="email"
-                          value={userEmailVal}
+                          value={currentEmail}
                           onChange={(e) => {
                             const val = e.target.value;
                             setEmailMap(prev => ({ ...prev, [user.id]: val }));
@@ -721,137 +852,115 @@ export const AdminSettings: React.FC = () => {
                               clearTimeout(autoSaveTimeouts.current[`email-${user.id}`]);
                             }
                             autoSaveTimeouts.current[`email-${user.id}`] = setTimeout(() => {
-                              handleAutoSaveAccount(user, undefined, val);
+                              handleSaveAccount(user, undefined, val);
                             }, 800);
                           }}
                           onBlur={() => {
-                            handleAutoSaveAccount(user, undefined, emailMap[user.id]);
+                            handleSaveAccount(user, undefined, emailMap[user.id]);
                           }}
                           placeholder="contoh: keuangan.teluksirih@gmail.com"
-                          className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 bg-slate-50/50 hover:bg-white focus:bg-white font-mono text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 shadow-2xs transition-all"
+                          className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 bg-slate-50/60 hover:bg-white focus:bg-white font-mono text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 shadow-2xs transition-all"
                         />
                       </div>
-                      <span className="text-[10px] text-slate-400">
-                        Otomatis tersimpan begitu selesai diketik
+                      <span className="text-[10px] text-slate-400 block">
+                        Dapat digunakan untuk login akun & menerima notifikasi
                       </span>
                     </div>
 
-                    {/* BOX 2: Password Eksisting Terakhir */}
-                    <div className="p-3 rounded-xl border border-slate-200 bg-white shadow-2xs space-y-1.5 flex flex-col justify-between">
+                    {/* KOLOM 2: Kata Sandi / Password Akun */}
+                    <div className="p-3 rounded-xl border border-indigo-200 bg-indigo-50/30 shadow-2xs space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-                          <Lock className="w-3.5 h-3.5 text-slate-400" />
-                          <span>Password Eksisting</span>
-                        </span>
-                        <span className="text-[10px] text-slate-400 font-mono">
-                          {showExistingPass[user.id] ? 'Terlihat' : 'Tersandi'}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center justify-between gap-2 bg-slate-50 px-3 py-2 rounded-lg border border-slate-200">
-                        <span className="font-mono text-xs text-slate-900 font-bold tracking-wider truncate">
-                          {showExistingPass[user.id] ? user.password : '••••••••'}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => handleToggleExistingPass(user.id)}
-                          className="text-slate-400 hover:text-indigo-600 p-1 rounded-md transition cursor-pointer shrink-0"
-                          title={showExistingPass[user.id] ? 'Sembunyikan kata sandi' : 'Lihat kata sandi'}
-                        >
-                          {showExistingPass[user.id] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                        </button>
-                      </div>
-                      <span className="text-[10px] text-slate-400">
-                        Password aktif saat ini di server
-                      </span>
-                    </div>
-
-                    {/* BOX 3: Password Baru */}
-                    <div className="p-3 rounded-xl border border-indigo-200 bg-indigo-50/40 shadow-2xs space-y-1.5 flex flex-col justify-between">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-bold text-indigo-900 uppercase tracking-wider flex items-center gap-1.5">
+                        <span className="text-[10px] font-bold text-indigo-950 uppercase tracking-wider flex items-center gap-1.5">
                           <KeyRound className="w-3.5 h-3.5 text-indigo-600" />
-                          <span>Kata Sandi Baru</span>
+                          <span>Password / Kata Sandi</span>
                         </span>
-                        {isPassModified && (
+                        {isPassChanged ? (
                           <span className="text-[10px] text-indigo-700 font-bold bg-indigo-100 px-1.5 py-0.5 rounded border border-indigo-300">
-                            Auto-Save
+                            Diubah (Auto-Save)
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-slate-400 font-mono">
+                            {showPassMap[user.id] ? 'Terlihat' : 'Tersandi'}
                           </span>
                         )}
                       </div>
 
                       <div className="relative">
                         <input
-                          type={showNewPassMap[user.id] ? 'text' : 'password'}
-                          value={newPassMap[user.id] || ''}
+                          type={showPassMap[user.id] ? 'text' : 'password'}
+                          value={currentPass}
                           onChange={(e) => {
                             const val = e.target.value;
-                            setNewPassMap(prev => ({ ...prev, [user.id]: val }));
+                            setPassMap(prev => ({ ...prev, [user.id]: val }));
                             if (autoSaveTimeouts.current[`pass-${user.id}`]) {
                               clearTimeout(autoSaveTimeouts.current[`pass-${user.id}`]);
                             }
                             if (val.trim().length >= 4) {
                               autoSaveTimeouts.current[`pass-${user.id}`] = setTimeout(() => {
-                                handleAutoSaveAccount(user, val, undefined);
+                                handleSaveAccount(user, val, undefined);
                               }, 800);
                             }
                           }}
                           onBlur={() => {
-                            if ((newPassMap[user.id] || '').trim().length >= 4) {
-                              handleAutoSaveAccount(user, newPassMap[user.id], undefined);
+                            if ((passMap[user.id] || '').trim().length >= 4) {
+                              handleSaveAccount(user, passMap[user.id], undefined);
                             }
                           }}
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') {
                               e.preventDefault();
-                              if ((newPassMap[user.id] || '').trim().length >= 4) {
-                                handleAutoSaveAccount(user, newPassMap[user.id], undefined);
+                              if ((passMap[user.id] || '').trim().length >= 4) {
+                                handleSaveAccount(user, passMap[user.id], undefined);
                               }
                             }
                           }}
-                          placeholder="Ketik password baru (min 4 kar)"
-                          className="w-full px-3 py-2 pr-9 text-xs rounded-lg border border-slate-300 bg-white font-mono text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 shadow-2xs"
+                          placeholder="Password minimal 4 karakter"
+                          className="w-full px-3 py-2 pr-9 text-xs rounded-lg border border-indigo-200 bg-white font-mono text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 shadow-2xs font-semibold"
                         />
                         <button
                           type="button"
-                          onClick={() => handleToggleNewPass(user.id)}
+                          onClick={() => handleTogglePass(user.id)}
                           className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600 cursor-pointer p-0.5"
-                          title={showNewPassMap[user.id] ? 'Sembunyikan password baru' : 'Lihat password baru'}
+                          title={showPassMap[user.id] ? 'Sembunyikan password' : 'Lihat password'}
                         >
-                          {showNewPassMap[user.id] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                          {showPassMap[user.id] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                         </button>
                       </div>
-                      <span className="text-[10px] text-slate-400">
-                        Otomatis tersimpan & aktif di server (min 4 karakter)
+                      <span className="text-[10px] text-slate-400 block">
+                        Edit langsung password akun di atas (tersimpan otomatis)
                       </span>
                     </div>
                   </div>
 
-                  {/* Row Auto-Save Status & Action */}
+                  {/* Row Auto-Save Status & Immediate Action */}
                   <div className="flex items-center justify-between pt-2 border-t border-slate-200/80 flex-wrap gap-2">
                     <div className="flex items-center gap-2 text-[11px] text-slate-500">
                       <span>ID Sistem: <code className="font-mono text-slate-600 bg-slate-100 px-1 py-0.5 rounded">{user.id}</code></span>
-                      {isSavingPassMap[user.id] ? (
+                      {isSavingMap[user.id] ? (
                         <span className="flex items-center gap-1.5 text-indigo-600 font-bold animate-pulse">
                           <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          Menyimpan otomatis ke server...
+                          Menyimpan otomatis ke database server...
                         </span>
-                      ) : userSaveSuccessMap[user.id] ? (
+                      ) : savedStatusMap[user.id] ? (
                         <span className="flex items-center gap-1 text-emerald-700 font-bold">
                           <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
-                          {userSaveSuccessMap[user.id]}
+                          {savedStatusMap[user.id]}
                         </span>
                       ) : null}
                     </div>
 
                     <button
                       type="button"
-                      onClick={() => handleAutoSaveAccount(user)}
-                      disabled={isSavingPassMap[user.id] || (!isPassModified && !isEmailModified)}
-                      className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg text-xs font-bold transition shadow-2xs flex items-center gap-1.5 cursor-pointer"
-                      title="Simpan langsung saat ini juga (atau cukup ketik, otomatis tersimpan)"
+                      onClick={() => handleSaveAccount(user)}
+                      disabled={isSavingMap[user.id]}
+                      className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition shadow-2xs flex items-center gap-1.5 cursor-pointer ${
+                        hasModifications
+                          ? 'bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white'
+                          : 'bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white'
+                      }`}
+                      title="Klik untuk langsung simpan perubahan ke database pusat"
                     >
-                      {isSavingPassMap[user.id] ? (
+                      {isSavingMap[user.id] ? (
                         <>
                           <Loader2 className="w-3.5 h-3.5 animate-spin" />
                           <span>Menyimpan...</span>
@@ -859,7 +968,7 @@ export const AdminSettings: React.FC = () => {
                       ) : (
                         <>
                           <Save className="w-3.5 h-3.5" />
-                          <span>Simpan Sekarang</span>
+                          <span>{hasModifications ? 'Simpan Perubahan' : 'Simpan ke Server'}</span>
                         </>
                       )}
                     </button>

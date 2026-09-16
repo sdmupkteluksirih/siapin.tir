@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { authStorage } from '../../services/authStorage';
 import { UserAccount } from '../../types';
 import { 
@@ -34,6 +34,17 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [usersList, setUsersList] = useState<UserAccount[]>(() => authStorage.getAllUsers());
+
+  useEffect(() => {
+    if (isOpen) {
+      authStorage.forceSyncFromServer().then(u => setUsersList(u)).catch(() => {});
+    }
+    const unsub = authStorage.subscribe(() => {
+      setUsersList(authStorage.getAllUsers());
+    });
+    return () => unsub();
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -57,9 +68,15 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
     }
   };
 
-  const handleQuickFill = (user: string, pass: string) => {
+  const getAdminPass = (uname: string) => {
+    const acc = usersList.find(u => u.username.toLowerCase() === uname.toLowerCase());
+    return acc?.password || 'admin123';
+  };
+
+  const handleQuickFill = (user: string) => {
+    const activePass = getAdminPass(user);
     setUsername(user);
-    setPassword(pass);
+    setPassword(activePass);
     setErrorMsg('');
   };
 
@@ -166,7 +183,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
 
             <div className="grid grid-cols-2 gap-2 text-[11px]">
               <div 
-                onClick={() => handleQuickFill('nofi', 'admin123')}
+                onClick={() => handleQuickFill('nofi')}
                 className="p-2 rounded-lg bg-white border border-indigo-100 hover:border-indigo-400 hover:bg-indigo-50/70 cursor-pointer transition-all space-y-0.5 shadow-2xs"
               >
                 <div className="font-bold text-slate-900 flex items-center justify-between">
@@ -174,11 +191,11 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
                   <span className="text-[8px] bg-indigo-600 text-white font-bold px-1 rounded">USER 1</span>
                 </div>
                 <div className="font-mono text-slate-600 text-[10px]">ID: <strong>nofi</strong></div>
-                <div className="font-mono text-slate-500 text-[9px]">Pass: admin123</div>
+                <div className="font-mono text-slate-500 text-[9px]">Pass: {getAdminPass('nofi')}</div>
               </div>
 
               <div 
-                onClick={() => handleQuickFill('resna', 'admin123')}
+                onClick={() => handleQuickFill('resna')}
                 className="p-2 rounded-lg bg-white border border-indigo-100 hover:border-indigo-400 hover:bg-indigo-50/70 cursor-pointer transition-all space-y-0.5 shadow-2xs"
               >
                 <div className="font-bold text-slate-900 flex items-center justify-between">
@@ -186,11 +203,11 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
                   <span className="text-[8px] bg-indigo-600 text-white font-bold px-1 rounded">USER 2</span>
                 </div>
                 <div className="font-mono text-slate-600 text-[10px]">ID: <strong>resna</strong></div>
-                <div className="font-mono text-slate-500 text-[9px]">Pass: admin123</div>
+                <div className="font-mono text-slate-500 text-[9px]">Pass: {getAdminPass('resna')}</div>
               </div>
 
               <div 
-                onClick={() => handleQuickFill('deri', 'admin123')}
+                onClick={() => handleQuickFill('deri')}
                 className="p-2 rounded-lg bg-white border border-indigo-100 hover:border-indigo-400 hover:bg-indigo-50/70 cursor-pointer transition-all space-y-0.5 shadow-2xs"
               >
                 <div className="font-bold text-slate-900 flex items-center justify-between">
@@ -198,11 +215,11 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
                   <span className="text-[8px] bg-blue-600 text-white font-bold px-1 rounded">APLIKASI 1</span>
                 </div>
                 <div className="font-mono text-slate-600 text-[10px]">ID: <strong>deri</strong></div>
-                <div className="font-mono text-slate-500 text-[9px]">Pass: admin123</div>
+                <div className="font-mono text-slate-500 text-[9px]">Pass: {getAdminPass('deri')}</div>
               </div>
 
               <div 
-                onClick={() => handleQuickFill('yuda', 'admin123')}
+                onClick={() => handleQuickFill('yuda')}
                 className="p-2 rounded-lg bg-white border border-indigo-100 hover:border-indigo-400 hover:bg-indigo-50/70 cursor-pointer transition-all space-y-0.5 shadow-2xs"
               >
                 <div className="font-bold text-slate-900 flex items-center justify-between">
@@ -210,7 +227,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
                   <span className="text-[8px] bg-blue-600 text-white font-bold px-1 rounded">APLIKASI 2</span>
                 </div>
                 <div className="font-mono text-slate-600 text-[10px]">ID: <strong>yuda</strong></div>
-                <div className="font-mono text-slate-500 text-[9px]">Pass: admin123</div>
+                <div className="font-mono text-slate-500 text-[9px]">Pass: {getAdminPass('yuda')}</div>
               </div>
             </div>
             <p className="text-[10px] text-slate-500 italic text-center pt-0.5">
