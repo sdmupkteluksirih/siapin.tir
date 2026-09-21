@@ -1,5 +1,6 @@
 import { UserAccount } from '../types';
 import { activityLogger } from './activityLogger';
+import { sseClient } from './sseClient';
 
 const USERS_STORAGE_KEY = 'meeting_app_users_v1';
 const CURRENT_USER_KEY = 'meeting_app_current_user_v1';
@@ -219,6 +220,45 @@ function notifyAuthSubscribers() {
   }
 }
 
+function applyServerUsersUpdate(newUsers: UserAccount[]) {
+  if (!Array.isArray(newUsers) || newUsers.length === 0) return;
+  cachedUsers = newUsers;
+  try {
+    localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(newUsers));
+  } catch {}
+
+  // Check if current active session user has updated password/data
+  if (typeof window !== 'undefined') {
+    try {
+      const storedCurr = localStorage.getItem(CURRENT_USER_KEY);
+      if (storedCurr) {
+        const curr = JSON.parse(storedCurr);
+        if (curr && (curr.id || curr.username)) {
+          const match = newUsers.find(u => 
+            (curr.id && u.id === curr.id) || 
+            (curr.username && u.username && u.username.toLowerCase() === curr.username.toLowerCase())
+          );
+          if (match) {
+            const hasChanged = 
+              match.password !== curr.password || 
+              match.name !== curr.name || 
+              match.role !== curr.role || 
+              match.department !== curr.department ||
+              match.email !== curr.email;
+            if (hasChanged) {
+              const updatedCurr = { ...curr, ...match };
+              localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(updatedCurr));
+              console.log('[AuthStorage] Active user session updated in real-time');
+            }
+          }
+        }
+      }
+    } catch {}
+  }
+
+  notifyAuthSubscribers();
+}
+
 async function fetchUsersFromServer(): Promise<UserAccount[]> {
   if (typeof window === 'undefined') return cachedUsers || DEFAULT_USERS;
   try {
@@ -227,11 +267,7 @@ async function fetchUsersFromServer(): Promise<UserAccount[]> {
     const serverUsers: UserAccount[] = await res.json();
     if (!Array.isArray(serverUsers) || serverUsers.length === 0) return cachedUsers || DEFAULT_USERS;
 
-    cachedUsers = serverUsers;
-    try {
-      localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(serverUsers));
-    } catch {}
-    notifyAuthSubscribers();
+    applyServerUsersUpdate(serverUsers);
     return serverUsers;
   } catch (err) {
     console.warn('Gagal memuat data pengguna dari server:', err);
@@ -258,30 +294,20 @@ function setupAuthRealtimeSync() {
 
   fetchUsersFromServer();
 
-  // Listen to SSE events for users_changed
-  try {
-    const eventSource = new EventSource('/api/events');
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === 'users_changed') {
-          fetchUsersFromServer();
-        }
-      } catch {}
-    };
-  } catch {}
+  // Listen to SSE events for users_changed via unified SSE client
+  sseClient.subscribe('users_changed', (payload: any) => {
+    if (payload && Array.isArray(payload.users) && payload.users.length > 0) {
+      applyServerUsersUpdate(payload.users);
+    } else {
+      fetchUsersFromServer();
+    }
+  });
 
   if (authBroadcast) {
     authBroadcast.onmessage = (event) => {
       if (event.data?.type === 'AUTH_USERS_CHANGED') {
         if (Array.isArray(event.data.users) && event.data.users.length > 0) {
-          cachedUsers = event.data.users;
-          try {
-            localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(event.data.users));
-          } catch {}
-          if (typeof window !== 'undefined') {
-            window.dispatchEvent(new Event(AUTH_LISTEN_EVENT));
-          }
+          applyServerUsersUpdate(event.data.users);
         } else {
           fetchUsersFromServer();
         }
@@ -292,9 +318,9 @@ function setupAuthRealtimeSync() {
   window.addEventListener('storage', (e) => {
     if (e.key === USERS_STORAGE_KEY && e.newValue) {
       try {
-        cachedUsers = JSON.parse(e.newValue);
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new Event(AUTH_LISTEN_EVENT));
+        const parsed = JSON.parse(e.newValue);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          applyServerUsersUpdate(parsed);
         }
       } catch {
         fetchUsersFromServer();
@@ -467,18 +493,7 @@ export const authStorage = {
           notifyAuthSubscribers();
           return { success: true, user: data.user };
         }
-      } else if (res.status === 401) {
-        // Fallback check if client storage has a valid match
-        const localRes = this.login(cleanUsername, cleanPassword);
-        if (localRes.success && localRes.user) {
-          // Sync to server so server learns the new password
-          fetch('/api/users/reset-password', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: localRes.user.id, newPassword: cleanPassword })
-          }).catch(() => {});
-          return localRes;
-        }
+      } else {
         const errJson = await res.json().catch(() => ({}));
         return { success: false, error: errJson.error || 'User ID atau Kata Sandi tidak cocok.' };
       }
@@ -513,12 +528,22 @@ export const authStorage = {
     const users = this.getAllUsers();
     let found = false;
     const cleanPass = newPassword.trim();
+    const currentUser = this.getCurrentUser();
+    const nowIso = new Date().toISOString();
+    const actorId = currentUser?.username || currentUser?.id || 'admin';
+    const actorName = currentUser?.name || 'Administrator';
+    const actorRole = currentUser?.role || 'ADMIN';
+
     const updated = users.map(u => {
       if (u.id === userId || (u.username && u.username.toLowerCase() === userId.toLowerCase())) {
         found = true;
         return {
           ...u,
-          password: cleanPass
+          password: cleanPass,
+          updatedAt: nowIso,
+          updatedById: actorId,
+          updatedByName: actorName,
+          updatedByRole: actorRole
         };
       }
       return u;
@@ -531,28 +556,38 @@ export const authStorage = {
       } catch {}
 
       // If the current logged in user was reset, update their session too
-      const current = this.getCurrentUser();
-      if (current && (current.id === userId || (current.username && current.username.toLowerCase() === userId.toLowerCase()))) {
-        const updatedCurrent = { ...current, password: cleanPass };
+      if (currentUser && (currentUser.id === userId || (currentUser.username && currentUser.username.toLowerCase() === userId.toLowerCase()))) {
+        const updatedCurrent = { ...currentUser, password: cleanPass, updatedAt: nowIso };
         try {
           localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(updatedCurrent));
         } catch {}
       }
       notifyAuthSubscribers();
 
-      // Trigger immediate server updates
+      // Trigger server update
       if (typeof window !== 'undefined') {
         fetch('/api/users/reset-password', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId, newPassword: cleanPass })
-        }).then(res => {
-          if (!res.ok) {
-            syncUsersToServer(updated);
+          body: JSON.stringify({
+            userId,
+            newPassword: cleanPass,
+            _user: currentUser ? {
+              id: currentUser.id,
+              username: currentUser.username,
+              name: currentUser.name,
+              role: currentUser.role,
+              department: currentUser.department
+            } : undefined
+          })
+        }).then(async (res) => {
+          if (res.ok) {
+            const data = await res.json().catch(() => null);
+            if (data?.users) {
+              applyServerUsersUpdate(data.users);
+            }
           }
-        }).catch(() => {
-          syncUsersToServer(updated);
-        });
+        }).catch(() => {});
       }
 
       try {
@@ -567,36 +602,82 @@ export const authStorage = {
     const cleanPass = newPassword.trim();
     if (!cleanPass || cleanPass.length < 4) return false;
 
-    // First update locally
-    const localOk = this.resetPassword(userId, cleanPass);
-    if (!localOk) return false;
+    const currentUser = this.getCurrentUser();
+    const nowIso = new Date().toISOString();
+    const actorId = currentUser?.username || currentUser?.id || 'admin';
+    const actorName = currentUser?.name || 'Administrator';
+    const actorRole = currentUser?.role || 'ADMIN';
 
-    // Then guarantee server persistence
+    // 1. Optimistic update
+    const users = this.getAllUsers();
+    let found = false;
+    const updated = users.map(u => {
+      if (u.id === userId || (u.username && u.username.toLowerCase() === userId.toLowerCase())) {
+        found = true;
+        return {
+          ...u,
+          password: cleanPass,
+          updatedAt: nowIso,
+          updatedById: actorId,
+          updatedByName: actorName,
+          updatedByRole: actorRole
+        };
+      }
+      return u;
+    });
+
+    if (found) {
+      cachedUsers = updated;
+      try {
+        localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(updated));
+      } catch {}
+
+      if (currentUser && (currentUser.id === userId || (currentUser.username && currentUser.username.toLowerCase() === userId.toLowerCase()))) {
+        const updatedCurrent = { ...currentUser, password: cleanPass, updatedAt: nowIso };
+        try {
+          localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(updatedCurrent));
+        } catch {}
+      }
+      notifyAuthSubscribers();
+    }
+
+    // 2. Authoritative server persistence
     try {
       const res = await fetch('/api/users/reset-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, newPassword: cleanPass })
+        body: JSON.stringify({
+          userId,
+          newPassword: cleanPass,
+          _user: currentUser ? {
+            id: currentUser.id,
+            username: currentUser.username,
+            name: currentUser.name,
+            role: currentUser.role,
+            department: currentUser.department
+          } : undefined
+        })
       });
+
       if (res.ok) {
         const data = await res.json();
-        if (data.user) {
-          const users = this.getAllUsers().map(u => u.id === data.user.id ? { ...u, password: cleanPass } : u);
-          cachedUsers = users;
-          try {
-            localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
-          } catch {}
-          notifyAuthSubscribers();
+        if (data.users && Array.isArray(data.users)) {
+          applyServerUsersUpdate(data.users);
+        } else if (data.user) {
+          const fresh = this.getAllUsers().map(u => 
+            (u.id === data.user.id || (u.username && u.username.toLowerCase() === data.user.username?.toLowerCase()))
+              ? { ...u, ...data.user, password: cleanPass }
+              : u
+          );
+          applyServerUsersUpdate(fresh);
         }
         return true;
-      } else {
-        await syncUsersToServer(this.getAllUsers());
-        return true;
       }
-    } catch {
-      await syncUsersToServer(this.getAllUsers());
-      return true;
+    } catch (err) {
+      console.warn('Error resetting password on server:', err);
     }
+
+    return found;
   },
 
   updateUserRole(userId: string, newRole: 'ADMIN' | 'USER'): boolean {
@@ -728,17 +809,15 @@ export const authStorage = {
 
       if (res.ok) {
         const json = await res.json();
-        if (json.user) {
+        if (json.users && Array.isArray(json.users)) {
+          applyServerUsersUpdate(json.users);
+        } else if (json.user) {
           const refreshed = this.getAllUsers().map(u => 
             (u.id === json.user.id || (u.username && u.username.toLowerCase() === json.user.username?.toLowerCase()))
               ? { ...u, ...json.user }
               : u
           );
-          cachedUsers = refreshed;
-          try {
-            localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(refreshed));
-          } catch {}
-          notifyAuthSubscribers();
+          applyServerUsersUpdate(refreshed);
         }
         return true;
       } else {

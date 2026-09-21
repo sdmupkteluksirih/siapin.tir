@@ -1,5 +1,6 @@
 import { ActivityAction, ActivityLog, UserAccount } from '../types';
 import { authStorage } from './authStorage';
+import { sseClient } from './sseClient';
 
 const STORAGE_KEY = 'siapin_activity_logs_v1';
 const LISTEN_EVENT = 'siapin_activity_logs_changed';
@@ -140,17 +141,10 @@ function setupLogsRealtime() {
 
   fetchLogsFromServer();
 
-  try {
-    const sse = new EventSource('/api/events');
-    sse.onmessage = (e) => {
-      try {
-        const payload = JSON.parse(e.data);
-        if (payload.type === 'activity_logged') {
-          fetchLogsFromServer();
-        }
-      } catch {}
-    };
-  } catch {}
+  // Subscribe to real-time events via unified SSE client
+  sseClient.subscribe('activity_logged', () => {
+    fetchLogsFromServer();
+  });
 
   // Periodic refresh
   setInterval(() => {

@@ -6,6 +6,7 @@
  */
 
 import { UserAccount, Booking, ActivityLog } from '../types';
+import { sseClient } from './sseClient';
 
 export interface MasterBankData {
   system: string;
@@ -82,23 +83,14 @@ export function initBankDataListener() {
   // 1. Initial fetch
   fetchMasterBankData();
 
-  // 2. Real-time SSE listener
-  try {
-    const sse = new EventSource('/api/events');
-    sse.onmessage = (event) => {
-      try {
-        const payload = JSON.parse(event.data);
-        if (
-          payload.type === 'bank_data_synced' ||
-          payload.type === 'bookings_changed' ||
-          payload.type === 'users_changed' ||
-          payload.type === 'activity_logged'
-        ) {
-          fetchMasterBankData();
-        }
-      } catch {}
-    };
-  } catch {}
+  // 2. Real-time SSE listener via unified sseClient
+  const handleRefresh = () => {
+    fetchMasterBankData();
+  };
+  sseClient.subscribe('bank_data_synced', handleRefresh);
+  sseClient.subscribe('bookings_changed', handleRefresh);
+  sseClient.subscribe('users_changed', handleRefresh);
+  sseClient.subscribe('activity_logged', handleRefresh);
 
   // 3. Fallback interval sync
   setInterval(() => {

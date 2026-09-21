@@ -2,6 +2,7 @@ import { Booking, BookingFormData, BookingStatus, RekapHarian } from '../types';
 import { calculateEndTime, generateDepartmentBookingNumber, getTodayDateString } from '../utils/timeUtils';
 import { activityLogger } from './activityLogger';
 import { authStorage } from './authStorage';
+import { sseClient } from './sseClient';
 
 const STORAGE_KEY = 'meeting_snack_bookings_v4';
 const LISTEN_EVENT = 'meeting_bookings_changed';
@@ -665,25 +666,10 @@ function setupRealtimeSync() {
   // 1. Initial server fetch & sync
   fetchBookingsFromServer(true);
 
-  // 2. Setup Server-Sent Events (SSE) for instant push across all devices/accounts
-  try {
-    const eventSource = new EventSource('/api/events');
-    eventSource.onmessage = (event) => {
-      try {
-        const payload = JSON.parse(event.data);
-        if (payload.type === 'bookings_changed' || payload.type === 'connected') {
-          fetchBookingsFromServer(false);
-        }
-      } catch {
-        fetchBookingsFromServer(false);
-      }
-    };
-    eventSource.onerror = () => {
-      // EventSource auto-reconnects
-    };
-  } catch {
-    // SSE not supported or blocked
-  }
+  // 2. Setup Server-Sent Events (SSE) via unified sseClient
+  sseClient.subscribe('bookings_changed', () => {
+    fetchBookingsFromServer(false);
+  });
 
   // 3. Fallback periodic polling every 1.5 seconds to guarantee interlock consistency
   setInterval(() => {

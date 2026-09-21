@@ -955,7 +955,7 @@ function readUsers(): any[] {
 function writeUsers(data: any[]): void {
   try {
     fs.writeFileSync(USERS_FILE, JSON.stringify(data, null, 2), 'utf-8');
-    notifySSE('users_changed');
+    notifySSE('users_changed', { users: data });
     syncMasterBankData('users_changed');
   } catch (err) {
     console.error('Error writing users file:', err);
@@ -1074,7 +1074,7 @@ app.post('/api/users/update', (req, res) => {
     writeActivityLogs(currentLogs);
   } catch {}
 
-  res.json({ success: true, user: targetUser, message: 'Data akun berhasil diperbarui di server pusat' });
+  res.json({ success: true, user: targetUser, users: updatedList, message: 'Data akun berhasil diperbarui di server pusat' });
 });
 
 app.post('/api/users/batch-update', (req, res) => {
@@ -1131,19 +1131,23 @@ app.post('/api/users/batch-update', (req, res) => {
     writeActivityLogs(currentLogs);
   } catch {}
 
-  notifySSE('users_changed');
-
   res.json({ success: true, count: updateCount, users: updatedList, message: 'Seluruh akun berhasil diperbarui di server' });
 });
 
 app.post('/api/users/reset-password', (req, res) => {
-  const { userId, newPassword } = req.body;
+  const { userId, newPassword, _user } = req.body;
   if (!userId || !newPassword || typeof newPassword !== 'string' || newPassword.trim().length < 4) {
     return res.status(400).json({ error: 'User ID dan password baru (minimal 4 karakter) wajib diisi' });
   }
 
   const cleanUserId = String(userId).trim();
   const cleanPass = newPassword.trim();
+  const actor = (_user as any) || {};
+  const actorId = actor.username || actor.id || 'admin';
+  const actorName = actor.name || 'Administrator';
+  const actorRole = actor.role || 'ADMIN';
+  const nowIso = new Date().toISOString();
+
   const users = readUsers();
   let found = false;
   let targetUser: any = null;
@@ -1157,7 +1161,11 @@ app.post('/api/users/reset-password', (req, res) => {
       found = true;
       targetUser = {
         ...u,
-        password: cleanPass
+        password: cleanPass,
+        updatedAt: nowIso,
+        updatedById: actorId,
+        updatedByName: actorName,
+        updatedByRole: actorRole
       };
       return targetUser;
     }
@@ -1174,13 +1182,13 @@ app.post('/api/users/reset-password', (req, res) => {
   try {
     const logItem = {
       id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-      timestamp: new Date().toISOString(),
-      userId: targetUser.username || targetUser.id,
-      userName: targetUser.name,
-      userDepartment: targetUser.department,
-      userRole: targetUser.role,
+      timestamp: nowIso,
+      userId: actorId,
+      userName: actorName,
+      userDepartment: actor.department || 'Administrasi',
+      userRole: actorRole,
       action: 'PASSWORD_RESET',
-      details: `Password untuk akun ${targetUser.name} (${targetUser.username}) berhasil diperbarui/direset`,
+      details: `${actorName} (${actorRole}) berhasil mereset password akun ${targetUser.name} (${targetUser.username})`,
       targetId: targetUser.id
     };
     const currentLogs = readActivityLogs();
@@ -1190,9 +1198,7 @@ app.post('/api/users/reset-password', (req, res) => {
     console.error('Error logging password reset:', err);
   }
 
-  notifySSE('users_changed');
-
-  res.json({ success: true, user: targetUser, message: 'Password berhasil diperbarui di server' });
+  res.json({ success: true, user: targetUser, users: updated, message: 'Password berhasil diperbarui di server' });
 });
 
 app.post('/api/auth/login', (req, res) => {

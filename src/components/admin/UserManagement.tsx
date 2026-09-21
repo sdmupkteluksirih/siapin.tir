@@ -119,9 +119,19 @@ export const UserManagement: React.FC = () => {
       return;
     }
 
-    const success = await authStorage.resetPasswordAsync(selectedUserForReset.id, newPasswordInput.trim());
+    const targetId = selectedUserForReset.id;
+    const targetUsername = selectedUserForReset.username;
+    const targetName = selectedUserForReset.name;
+    const cleanPass = newPasswordInput.trim();
+
+    const success = await authStorage.resetPasswordAsync(targetId, cleanPass);
     if (success) {
-      showNotificationMsg(`Password untuk akun "${selectedUserForReset.username}" (${selectedUserForReset.name}) berhasil diperbarui dan tersimpan ke server.`);
+      setRevealedPasswords(prev => ({
+        ...prev,
+        [targetId]: true
+      }));
+      setUsers(authStorage.getAllUsers());
+      showNotificationMsg(`Password untuk akun "${targetUsername}" (${targetName}) berhasil diperbarui dan tersinkronisasi ke server.`);
       setSelectedUserForReset(null);
     } else {
       showNotificationMsg('Gagal mereset password akun.', 'error');
