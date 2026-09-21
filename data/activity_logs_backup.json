@@ -1,5 +1,38 @@
 [
   {
+    "id": "log-1789546244983-3jtmn",
+    "timestamp": "2026-09-16T08:10:44.983Z",
+    "userId": "deri",
+    "userName": "DERI TIALIS PERISTIAWAN",
+    "userDepartment": "Sistem Informasi & TI (Admin Aplikasi 1)",
+    "userRole": "ADMIN",
+    "action": "LOGIN",
+    "details": "User DERI TIALIS PERISTIAWAN (Sistem Informasi & TI (Admin Aplikasi 1)) berhasil login ke sistem",
+    "targetId": "deri"
+  },
+  {
+    "id": "log-1789546040483-ytjdm",
+    "timestamp": "2026-09-16T08:07:20.483Z",
+    "userId": "deri",
+    "userName": "DERI TIALIS PERISTIAWAN",
+    "userDepartment": "Sistem Informasi & TI (Admin Aplikasi 1)",
+    "userRole": "ADMIN",
+    "action": "LOGIN",
+    "details": "User DERI TIALIS PERISTIAWAN (Sistem Informasi & TI (Admin Aplikasi 1)) berhasil login ke sistem",
+    "targetId": "deri"
+  },
+  {
+    "id": "log-1789546034593-zhfu9",
+    "timestamp": "2026-09-16T08:07:14.593Z",
+    "userId": "deri",
+    "userName": "DERI TIALIS PERISTIAWAN",
+    "userDepartment": "Sistem Informasi & TI (Admin Aplikasi 1)",
+    "userRole": "ADMIN",
+    "action": "PASSWORD_RESET",
+    "details": "Perubahan data akun: Password/Email untuk DERI TIALIS PERISTIAWAN (deri) berhasil diperbarui",
+    "targetId": "usr-admin-deri"
+  },
+  {
     "id": "log-1789455538490-ug6dy",
     "timestamp": "2026-09-15T06:58:58.490Z",
     "userId": "admin",

@@ -43,7 +43,7 @@ export const DEFAULT_USERS: UserAccount[] = [
     role: 'ADMIN',
     department: 'Sistem Informasi & TI (Admin Aplikasi 1)',
     email: 'deri.tialis@pln.co.id',
-    password: 'admin123',
+    password: 'PLNip@2026',
     avatarText: 'DP',
     lastLogin: '2026-08-20T08:00:00.000Z',
     createdAt: '2026-01-01T00:00:00.000Z'
@@ -706,6 +706,7 @@ export const authStorage = {
 
     // Direct authoritative call to /api/users/update
     try {
+      const currentUser = this.getCurrentUser();
       const res = await fetch('/api/users/update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -714,7 +715,14 @@ export const authStorage = {
           email: cleanEmail,
           password: cleanPass,
           name: data.name,
-          role: data.role
+          role: data.role,
+          _user: currentUser ? {
+            id: currentUser.id,
+            username: currentUser.username,
+            name: currentUser.name,
+            role: currentUser.role,
+            department: currentUser.department
+          } : undefined
         })
       });
 
@@ -753,6 +761,7 @@ export const authStorage = {
     if (!success) return false;
 
     try {
+      const currentUser = this.getCurrentUser();
       const res = await fetch('/api/users/update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -761,7 +770,14 @@ export const authStorage = {
           email: updates.email,
           password: updates.password,
           name: updates.name,
-          role: updates.role
+          role: updates.role,
+          _user: currentUser ? {
+            id: currentUser.id,
+            username: currentUser.username,
+            name: currentUser.name,
+            role: currentUser.role,
+            department: currentUser.department
+          } : undefined
         })
       });
       if (res.ok) {

@@ -83,14 +83,14 @@ export const AdminSettings: React.FC = () => {
       setPassMap(prev => {
         const next = { ...prev };
         refreshed.forEach(u => {
-          if (next[u.id] === undefined) next[u.id] = u.password;
+          next[u.id] = u.password;
         });
         return next;
       });
       setEmailMap(prev => {
         const next = { ...prev };
         refreshed.forEach(u => {
-          if (next[u.id] === undefined) next[u.id] = u.email || '';
+          next[u.id] = u.email || '';
         });
         return next;
       });
@@ -105,19 +105,15 @@ export const AdminSettings: React.FC = () => {
       setPassMap(prev => {
         const next = { ...prev };
         users.forEach(u => {
-          // If not currently edited, keep synced with server
-          if (next[u.id] === undefined) {
-            next[u.id] = u.password;
-          }
+          // Always keep synced with latest authStorage data
+          next[u.id] = u.password;
         });
         return next;
       });
       setEmailMap(prev => {
         const next = { ...prev };
         users.forEach(u => {
-          if (next[u.id] === undefined) {
-            next[u.id] = u.email || '';
-          }
+          next[u.id] = u.email || '';
         });
         return next;
       });
@@ -129,23 +125,19 @@ export const AdminSettings: React.FC = () => {
     };
   }, []);
 
-  // Initialize maps when allUsers changes
+  // Sync maps whenever allUsers changes
   useEffect(() => {
     setPassMap(prev => {
       const next = { ...prev };
       allUsers.forEach(u => {
-        if (next[u.id] === undefined) {
-          next[u.id] = u.password;
-        }
+        next[u.id] = u.password;
       });
       return next;
     });
     setEmailMap(prev => {
       const next = { ...prev };
       allUsers.forEach(u => {
-        if (next[u.id] === undefined) {
-          next[u.id] = u.email || '';
-        }
+        next[u.id] = u.email || '';
       });
       return next;
     });
@@ -211,6 +203,12 @@ export const AdminSettings: React.FC = () => {
 
       if (success) {
         setSavedStatusMap(prev => ({ ...prev, [user.id]: 'Tersimpan ke Server Pusat' }));
+        // Explicitly update local passMap and emailMap
+        if (activePass.length >= 4) {
+          setPassMap(prev => ({ ...prev, [user.id]: activePass }));
+        }
+        setEmailMap(prev => ({ ...prev, [user.id]: activeEmail }));
+        
         const currentUsers = authStorage.getAllUsers();
         setAllUsers(currentUsers);
         setTimeout(() => {
@@ -951,7 +949,7 @@ export const AdminSettings: React.FC = () => {
 
                     <button
                       type="button"
-                      onClick={() => handleSaveAccount(user)}
+                      onClick={() => handleSaveAccount(user, passMap[user.id], emailMap[user.id])}
                       disabled={isSavingMap[user.id]}
                       className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition shadow-2xs flex items-center gap-1.5 cursor-pointer ${
                         hasModifications

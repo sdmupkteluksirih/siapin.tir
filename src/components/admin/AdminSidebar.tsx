@@ -10,7 +10,8 @@ import {
   Settings, 
   LogOut,
   X,
-  ShieldCheck
+  ShieldCheck,
+  Database
 } from 'lucide-react';
 
 interface AdminSidebarProps {
@@ -27,6 +28,7 @@ const MENU_ITEMS = [
   { id: 'kalender' as AdminTab, label: 'Kalender', icon: Calendar },
   { id: 'rekap' as AdminTab, label: 'Rekap Konsumsi', icon: UtensilsCrossed },
   { id: 'logs' as AdminTab, label: 'Log Aktivitas', icon: ShieldCheck },
+  { id: 'bank-data' as AdminTab, label: 'Bank Data Terpadu', icon: Database },
   { id: 'pengaturan' as AdminTab, label: 'Pengaturan & User', icon: Settings },
 ];
 

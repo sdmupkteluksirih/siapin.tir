@@ -7,6 +7,7 @@ import { BookingManagement } from './BookingManagement';
 import { MeetingCalendar } from './MeetingCalendar';
 import { RekapKonsumsi } from './RekapKonsumsi';
 import { ActivityLogsView } from './ActivityLogsView';
+import { BankDataView } from './BankDataView';
 import { AdminSettings } from './AdminSettings';
 import { BookingDetailModal } from './BookingDetailModal';
 import { 
@@ -82,6 +83,8 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                 {currentTab === 'booking' && 'Manajemen Booking'}
                 {currentTab === 'kalender' && 'Kalender Ruangan'}
                 {currentTab === 'rekap' && 'Rekapitulasi Konsumsi'}
+                {currentTab === 'logs' && 'Log Aktivitas & Audit Trail'}
+                {currentTab === 'bank-data' && 'Bank Data Terpadu (1 Source)'}
                 {currentTab === 'pengaturan' && 'Pengaturan & Master Data'}
               </div>
             </div>
@@ -132,6 +135,10 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
 
           {currentTab === 'logs' && (
             <ActivityLogsView />
+          )}
+
+          {currentTab === 'bank-data' && (
+            <BankDataView />
           )}
 
           {currentTab === 'pengaturan' && (

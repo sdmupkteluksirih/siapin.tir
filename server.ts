@@ -36,6 +36,37 @@ const BOOKINGS_FILE = path.join(DATA_DIR, 'bookings.json');
 const USERS_FILE = path.join(DATA_DIR, 'users.json');
 const LOGS_FILE = path.join(DATA_DIR, 'activity_logs.json');
 const LOGS_BACKUP_FILE = path.join(DATA_DIR, 'activity_logs_backup.json');
+const BANK_DATA_FILE = path.join(DATA_DIR, 'master_bank_data.json');
+
+// Master Bank Data Synchronizer: unifies users, bookings, activity logs, and metadata into a single authoritative source
+function syncMasterBankData(triggerEvent?: string): void {
+  try {
+    const users = readUsers();
+    const bookings = readBookings();
+    const logs = readActivityLogs();
+
+    const masterBank = {
+      system: 'SI APIN - PT PLN Indonesia Power UBP Teluk Sirih',
+      schemaVersion: '2.0-unified',
+      lastUpdated: new Date().toISOString(),
+      lastTrigger: triggerEvent || 'system_init',
+      meta: {
+        totalAccounts: users.length,
+        totalBookings: bookings.length,
+        totalActivityLogs: logs.length,
+        activeBookings: bookings.filter((b: any) => b.status === 'CONFIRMED' || b.status === 'BOOKED').length,
+      },
+      accounts: users,
+      bookings: bookings,
+      activityLogs: logs
+    };
+
+    fs.writeFileSync(BANK_DATA_FILE, JSON.stringify(masterBank, null, 2), 'utf-8');
+    notifySSE('bank_data_synced', { lastUpdated: masterBank.lastUpdated, meta: masterBank.meta });
+  } catch (err) {
+    console.error('[Bank Data] Error synchronizing master bank data:', err);
+  }
+}
 
 // Ensure data directory exists safely
 try {
@@ -45,6 +76,13 @@ try {
 } catch (dirErr) {
   console.warn('[Storage] Notice: Filesystem may be readonly in serverless runtime:', dirErr);
 }
+
+// Initialize Master Bank Data immediately on startup
+setTimeout(() => {
+  try {
+    syncMasterBankData('boot_startup');
+  } catch {}
+}, 500);
 
 // Initial default corporate seed bookings
 const SEED_BOOKINGS = [
@@ -309,6 +347,7 @@ function writeBookings(data: any[]): void {
     fs.writeFileSync(BOOKINGS_FILE, JSON.stringify(data, null, 2), 'utf-8');
     fs.writeFileSync(BACKUP_FILE, JSON.stringify(data, null, 2), 'utf-8');
     notifySSE('bookings_changed');
+    syncMasterBankData('bookings_changed');
   } catch (err) {
     console.error('Error writing bookings file:', err);
   }
@@ -379,10 +418,74 @@ app.post('/api/bookings', (req, res) => {
     return res.status(400).json({ error: 'Data booking tidak lengkap' });
   }
 
+  const creatorUser = (req.body._user as any) || {};
+  const actorId = creatorUser.username || creatorUser.id || newBooking.createdById || newBooking.bookerUsername || newBooking.department || 'user';
+  const actorName = creatorUser.name || newBooking.createdByName || newBooking.bookerName || 'Pengguna';
+  const actorDept = creatorUser.department || newBooking.createdByDepartment || newBooking.department || '-';
+  const actorRole = creatorUser.role || newBooking.createdByRole || 'USER';
+  const nowIso = new Date().toISOString();
+
+  newBooking.createdById = newBooking.createdById || actorId;
+  newBooking.createdByName = newBooking.createdByName || actorName;
+  newBooking.createdByDepartment = newBooking.createdByDepartment || actorDept;
+  newBooking.createdByRole = newBooking.createdByRole || actorRole;
+
+  newBooking.lastModifiedById = actorId;
+  newBooking.lastModifiedByName = actorName;
+  newBooking.lastModifiedByDepartment = actorDept;
+  newBooking.lastModifiedByRole = actorRole;
+  newBooking.lastModifiedAt = nowIso;
+  newBooking.lastAction = 'DIBUAT';
+
+  if (!Array.isArray(newBooking.history)) {
+    newBooking.history = [];
+  }
+  if (newBooking.history.length === 0) {
+    newBooking.history.push({
+      timestamp: nowIso,
+      action: 'DIBUAT',
+      userId: actorId,
+      userName: actorName,
+      userRole: actorRole,
+      userDepartment: actorDept,
+      notes: `Pengajuan booking ${newBooking.bookingNumber}`
+    });
+  }
+  delete newBooking._user;
+
   const current = readBookings();
   // Put new booking at the top
   const updated = [newBooking, ...current.filter((b) => b.id !== newBooking.id)];
   writeBookings(updated);
+
+  // Record audit log to central bank data
+  try {
+    const logItem = {
+      id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      timestamp: nowIso,
+      userId: actorId,
+      userName: actorName,
+      userDepartment: actorDept,
+      userRole: actorRole,
+      action: 'BOOKING_CREATE',
+      details: `Pengajuan booking rapat baru oleh ${actorName} (${actorId}): ${newBooking.bookingNumber} - "${newBooking.meetingTitle}" (${newBooking.meetingLocation}, ${newBooking.meetingDate} ${newBooking.startTime}-${newBooking.endTime})`,
+      targetId: newBooking.bookingNumber,
+      metadata: {
+        bookingId: newBooking.id,
+        bookingNumber: newBooking.bookingNumber,
+        department: newBooking.department,
+        participantCount: newBooking.participantCount,
+        makanSiang: newBooking.makanSiang,
+        snackRingan: newBooking.snackRingan,
+        snackBerat: newBooking.snackBerat
+      }
+    };
+    const currentLogs = readActivityLogs();
+    currentLogs.unshift(logItem);
+    writeActivityLogs(currentLogs);
+  } catch (err) {
+    console.error('Error writing booking create audit log:', err);
+  }
 
   // Send asynchronous notification email to admins
   const origin = `${req.protocol}://${req.get('host')}`;
@@ -403,25 +506,118 @@ app.put('/api/bookings/:id', (req, res) => {
   let updatedItem: any = null;
   let originalItem: any = null;
 
+  const actor = (updates._user as any) || {};
+  const actorId = actor.username || actor.id || updates.lastModifiedById || updates.approvedBy || 'admin';
+  const actorName = actor.name || updates.lastModifiedByName || updates.approvedBy || 'Administrator';
+  const actorDept = actor.department || updates.lastModifiedByDepartment || 'Administrasi';
+  const actorRole = actor.role || updates.lastModifiedByRole || 'ADMIN';
+  const nowIso = new Date().toISOString();
+
+  let statusChanged = false;
+  let notesChanged = false;
+
   const updated = current.map((b) => {
     if (b.id === id) {
       found = true;
       originalItem = { ...b };
-      updatedItem = { ...b, ...updates, updatedAt: new Date().toISOString() };
+
+      statusChanged = updates.status !== undefined && originalItem.status !== updates.status;
+      notesChanged = updates.approvalNotes !== undefined && originalItem.approvalNotes !== updates.approvalNotes;
+
+      let actionDesc = 'DIPERBARUI';
+      if (statusChanged) {
+        if (updates.status === 'CONFIRMED') {
+          actionDesc = 'DISETUJUI (APPROVED)';
+        } else if (updates.status === 'CANCELLED') {
+          actionDesc = 'DIBATALKAN';
+        } else if (updates.status === 'COMPLETED') {
+          actionDesc = 'SELESAI';
+        } else {
+          actionDesc = `STATUS DIUBAH (${updates.status})`;
+        }
+      } else if (notesChanged) {
+        actionDesc = 'CATATAN APPROVAL DIPERBARUI';
+      }
+
+      const existingHistory = Array.isArray(originalItem.history) ? [...originalItem.history] : [];
+      existingHistory.push({
+        timestamp: nowIso,
+        action: actionDesc,
+        userId: actorId,
+        userName: actorName,
+        userRole: actorRole,
+        userDepartment: actorDept,
+        notes: updates.approvalNotes || updates.notes || undefined
+      });
+
+      updatedItem = {
+        ...b,
+        ...updates,
+        updatedAt: nowIso,
+        lastModifiedById: actorId,
+        lastModifiedByName: actorName,
+        lastModifiedByDepartment: actorDept,
+        lastModifiedByRole: actorRole,
+        lastModifiedAt: nowIso,
+        lastAction: actionDesc,
+        history: existingHistory
+      };
+      delete updatedItem._user;
       return updatedItem;
     }
     return b;
   });
 
-  if (!found) {
+  if (!found || !updatedItem) {
     return res.status(404).json({ error: 'Booking tidak ditemukan' });
   }
 
   writeBookings(updated);
 
+  // Record audit log to central bank data
+  try {
+    let actionType = 'BOOKING_UPDATE';
+    let detailMsg = `Update data jadwal booking ${updatedItem.bookingNumber} ("${updatedItem.meetingTitle}") oleh ${actorName} (${actorId})`;
+
+    if (statusChanged) {
+      if (updatedItem.status === 'CONFIRMED') {
+        actionType = 'BOOKING_APPROVE';
+        detailMsg = `Admin ${actorName} (${actorId}) menyetujui (approve) booking ${updatedItem.bookingNumber} ("${updatedItem.meetingTitle}")`;
+      } else if (updatedItem.status === 'CANCELLED') {
+        actionType = 'BOOKING_CANCEL';
+        detailMsg = `Permohonan booking ${updatedItem.bookingNumber} ("${updatedItem.meetingTitle}") dibatalkan oleh ${actorName} (${actorId})`;
+      } else {
+        detailMsg = `Status booking ${updatedItem.bookingNumber} diubah menjadi ${updatedItem.status} oleh ${actorName} (${actorId})`;
+      }
+    }
+
+    const logItem = {
+      id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      timestamp: nowIso,
+      userId: actorId,
+      userName: actorName,
+      userDepartment: actorDept,
+      userRole: actorRole,
+      action: actionType,
+      details: detailMsg,
+      targetId: updatedItem.bookingNumber,
+      metadata: {
+        bookingId: updatedItem.id,
+        status: updatedItem.status,
+        approvalNotes: updatedItem.approvalNotes,
+        approvedBy: updatedItem.approvedBy,
+        lastModifiedById: actorId,
+        lastModifiedByName: actorName
+      }
+    };
+    const currentLogs = readActivityLogs();
+    currentLogs.unshift(logItem);
+    writeActivityLogs(currentLogs);
+  } catch (err) {
+    console.error('Error writing booking update audit log:', err);
+  }
+
   // If status changed or approval notes were updated, send email notification to user
-  const statusChanged = originalItem && (originalItem.status !== updatedItem.status);
-  const notesChanged = originalItem && (originalItem.approvalNotes !== updatedItem.approvalNotes);
   if (statusChanged || notesChanged) {
     const origin = `${req.protocol}://${req.get('host')}`;
     emailService.sendBookingStatusUpdateUserAlert(updatedItem, originalItem?.status, origin).catch((err) => {
@@ -466,9 +662,38 @@ app.get('/api/email-logs', (req, res) => {
 app.delete('/api/bookings/:id', (req, res) => {
   const { id } = req.params;
   const current = readBookings();
+  const target = current.find((b) => b.id === id);
   const filtered = current.filter((b) => b.id !== id);
 
   writeBookings(filtered);
+
+  if (target) {
+    try {
+      const logItem = {
+        id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        timestamp: new Date().toISOString(),
+        userId: 'admin',
+        userName: 'Administrator',
+        userDepartment: 'Administrasi',
+        userRole: 'ADMIN',
+        action: 'BOOKING_DELETE',
+        details: `Menghapus data permohonan booking ${target.bookingNumber} ("${target.meetingTitle}") dari bank data`,
+        targetId: target.bookingNumber,
+        metadata: {
+          deletedId: id,
+          bookingNumber: target.bookingNumber,
+          meetingTitle: target.meetingTitle,
+          department: target.department
+        }
+      };
+      const currentLogs = readActivityLogs();
+      currentLogs.unshift(logItem);
+      writeActivityLogs(currentLogs);
+    } catch (err) {
+      console.error('Error writing booking delete audit log:', err);
+    }
+  }
+
   res.json({ success: true, deletedId: id });
 });
 
@@ -554,7 +779,7 @@ const SEED_USERS = [
     role: 'ADMIN',
     department: 'Sistem Informasi & TI (Admin Aplikasi 1)',
     email: 'deri.tialis@pln.co.id',
-    password: 'admin123',
+    password: 'PLNip@2026',
     avatarText: 'DP',
     lastLogin: '2026-08-20T08:00:00.000Z',
     createdAt: '2026-01-01T00:00:00.000Z'
@@ -731,6 +956,7 @@ function writeUsers(data: any[]): void {
   try {
     fs.writeFileSync(USERS_FILE, JSON.stringify(data, null, 2), 'utf-8');
     notifySSE('users_changed');
+    syncMasterBankData('users_changed');
   } catch (err) {
     console.error('Error writing users file:', err);
   }
@@ -777,7 +1003,7 @@ app.post('/api/users/sync', (req, res) => {
 
 // Single user update endpoint (Email, Password, Name, Role)
 app.post('/api/users/update', (req, res) => {
-  const { userId, email, password, name, role } = req.body;
+  const { userId, email, password, name, role, _user } = req.body;
   if (!userId) {
     return res.status(400).json({ error: 'userId wajib diisi' });
   }
@@ -786,6 +1012,12 @@ app.post('/api/users/update', (req, res) => {
   const currentUsers = readUsers();
   let found = false;
   let targetUser: any = null;
+
+  const actor = (_user as any) || {};
+  const actorId = actor.username || actor.id || 'admin';
+  const actorName = actor.name || 'Administrator';
+  const actorRole = actor.role || 'ADMIN';
+  const nowIso = new Date().toISOString();
 
   const updatedList = currentUsers.map((existing: any) => {
     if (
@@ -807,6 +1039,11 @@ app.post('/api/users/update', (req, res) => {
       if (role && (role === 'ADMIN' || role === 'USER') && existing.username !== 'admin') {
         result.role = role;
       }
+      result.updatedAt = nowIso;
+      result.updatedById = actorId;
+      result.updatedByName = actorName;
+      result.updatedByRole = actorRole;
+
       targetUser = result;
       return result;
     }
@@ -823,13 +1060,13 @@ app.post('/api/users/update', (req, res) => {
   try {
     const logItem = {
       id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-      timestamp: new Date().toISOString(),
-      userId: targetUser.username || targetUser.id,
-      userName: targetUser.name,
-      userDepartment: targetUser.department,
-      userRole: targetUser.role,
-      action: 'PASSWORD_RESET',
-      details: `Perubahan data akun: Password/Email untuk ${targetUser.name} (${targetUser.username}) berhasil diperbarui`,
+      timestamp: nowIso,
+      userId: actorId,
+      userName: actorName,
+      userDepartment: actor.department || 'Administrasi',
+      userRole: actorRole,
+      action: 'USER_UPDATE',
+      details: `${actorName} (${actorId}) memperbarui data akun: ${targetUser.name} (${targetUser.username}) [Role: ${targetUser.role}]`,
       targetId: targetUser.id
     };
     const currentLogs = readActivityLogs();
@@ -1122,6 +1359,7 @@ function writeActivityLogs(data: any[]): void {
     fs.writeFileSync(LOGS_FILE, JSON.stringify(data, null, 2), 'utf-8');
     fs.writeFileSync(LOGS_BACKUP_FILE, JSON.stringify(data, null, 2), 'utf-8');
     notifySSE('activity_logged');
+    syncMasterBankData('activity_logged');
   } catch (err) {
     console.error('Error writing activity logs:', err);
   }
@@ -1210,6 +1448,103 @@ app.post('/api/logs/sync', (req, res) => {
 app.delete('/api/logs', (req, res) => {
   writeActivityLogs(SEED_LOGS);
   res.json({ success: true, message: 'Logs di-reset ke log awal' });
+});
+
+// ==========================================
+// CENTRAL SOURCE BANK DATA ENDPOINTS
+// ==========================================
+
+// GET master bank data overview & stats
+app.get('/api/bank-data', (req, res) => {
+  try {
+    if (!fs.existsSync(BANK_DATA_FILE)) {
+      syncMasterBankData('initial_read');
+    }
+    const raw = fs.readFileSync(BANK_DATA_FILE, 'utf-8');
+    const data = JSON.parse(raw);
+    res.json(data);
+  } catch (err) {
+    // Fallback generate dynamically
+    const users = readUsers();
+    const bookings = readBookings();
+    const logs = readActivityLogs();
+    res.json({
+      system: 'SI APIN - PT PLN Indonesia Power UBP Teluk Sirih',
+      schemaVersion: '2.0-unified',
+      lastUpdated: new Date().toISOString(),
+      meta: {
+        totalAccounts: users.length,
+        totalBookings: bookings.length,
+        totalActivityLogs: logs.length,
+        activeBookings: bookings.filter((b: any) => b.status === 'CONFIRMED' || b.status === 'BOOKED').length,
+      },
+      accounts: users,
+      bookings: bookings,
+      activityLogs: logs
+    });
+  }
+});
+
+// GET export master bank data as downloadable JSON attachment
+app.get('/api/bank-data/export', (req, res) => {
+  try {
+    syncMasterBankData('manual_export');
+    const raw = fs.readFileSync(BANK_DATA_FILE, 'utf-8');
+    const now = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    res.setHeader('Content-Disposition', `attachment; filename="BANK_DATA_SI_APIN_PLTU_TELUK_SIRIH_${now}.json"`);
+    res.setHeader('Content-Type', 'application/json');
+    res.send(raw);
+  } catch (err) {
+    res.status(500).json({ error: 'Gagal membuat file ekspor bank data' });
+  }
+});
+
+// POST force trigger resync of master bank data
+app.post('/api/bank-data/sync', (req, res) => {
+  try {
+    syncMasterBankData('manual_reconcile');
+    const raw = fs.readFileSync(BANK_DATA_FILE, 'utf-8');
+    const data = JSON.parse(raw);
+    res.json({ success: true, message: 'Bank data berhasil dikonsolidasi & disinkronkan', meta: data.meta });
+  } catch (err) {
+    res.status(500).json({ error: 'Gagal sinkronisasi bank data' });
+  }
+});
+
+// POST restore or import master bank data
+app.post('/api/bank-data/restore', (req, res) => {
+  const { backup } = req.body;
+  if (!backup || typeof backup !== 'object') {
+    return res.status(400).json({ error: 'Data backup bank data tidak valid' });
+  }
+
+  try {
+    let restoredUsers = false;
+    let restoredBookings = false;
+    let restoredLogs = false;
+
+    if (Array.isArray(backup.accounts) && backup.accounts.length > 0) {
+      writeUsers(backup.accounts);
+      restoredUsers = true;
+    }
+    if (Array.isArray(backup.bookings) && backup.bookings.length > 0) {
+      writeBookings(backup.bookings);
+      restoredBookings = true;
+    }
+    if (Array.isArray(backup.activityLogs) && backup.activityLogs.length > 0) {
+      writeActivityLogs(backup.activityLogs);
+      restoredLogs = true;
+    }
+
+    syncMasterBankData('restore_from_backup');
+    res.json({
+      success: true,
+      message: 'Bank data berhasil dipulihkan dari cadangan',
+      restored: { users: restoredUsers, bookings: restoredBookings, logs: restoredLogs }
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Gagal memulihkan cadangan bank data' });
+  }
 });
 
 // ==========================================

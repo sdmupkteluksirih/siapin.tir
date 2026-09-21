@@ -315,6 +315,93 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
                 </div>
               )}
             </div>
+
+            {/* Audit Trail & Identitas Pengubah Data (Satu Sumber Bank Data) */}
+            <div className="p-4 rounded-xl border border-indigo-100 bg-indigo-50/40 space-y-3 text-xs">
+              <div className="flex items-center justify-between">
+                <div className="text-xs font-bold uppercase text-indigo-700 flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-indigo-600" />
+                  <span>Jejak Audit & Identitas Pengubah (Bank Data Terpadu)</span>
+                </div>
+                <span className="text-[10px] font-mono bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full font-semibold">
+                  Tersinkronisasi Otomatis
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-white p-3 rounded-lg border border-indigo-100/80">
+                <div>
+                  <span className="text-slate-400 text-[11px] block">Pembuat Data Awal:</span>
+                  <div className="font-bold text-slate-800">
+                    {booking.createdByName || booking.bookerName || 'Pengguna'}
+                    <span className="font-mono text-indigo-600 ml-1">
+                      ({booking.createdById || booking.department})
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-slate-500">
+                    Divisi: {booking.createdByDepartment || booking.department}
+                  </div>
+                  <div className="text-[10px] text-slate-400 mt-0.5">
+                    {booking.createdAt ? new Date(booking.createdAt).toLocaleString('id-ID') : '-'}
+                  </div>
+                </div>
+
+                <div>
+                  <span className="text-slate-400 text-[11px] block">Terakhir Diperbarui / Diubah Oleh:</span>
+                  <div className="font-bold text-slate-900">
+                    {booking.lastModifiedByName || booking.approvedBy || booking.createdByName || 'Administrator'}
+                    <span className="font-mono text-purple-600 ml-1">
+                      ({booking.lastModifiedById || 'admin'})
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-slate-600 flex items-center gap-1 mt-0.5">
+                    <span className="px-1.5 py-0.2 bg-purple-100 text-purple-700 rounded text-[10px] font-bold">
+                      {booking.lastModifiedByRole || 'ADMIN'}
+                    </span>
+                    <span>{booking.lastModifiedByDepartment || 'Administrasi'}</span>
+                  </div>
+                  <div className="text-[10px] text-slate-400 mt-0.5">
+                    {booking.lastModifiedAt 
+                      ? new Date(booking.lastModifiedAt).toLocaleString('id-ID') 
+                      : (booking.updatedAt ? new Date(booking.updatedAt).toLocaleString('id-ID') : '-')}
+                  </div>
+                </div>
+              </div>
+
+              {/* Action summary badge */}
+              {booking.lastAction && (
+                <div className="flex items-center gap-2 text-[11px]">
+                  <span className="text-slate-500 font-medium">Aktivitas Terakhir:</span>
+                  <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 font-bold rounded">
+                    {booking.lastAction}
+                  </span>
+                </div>
+              )}
+
+              {/* History Timeline jika ada */}
+              {Array.isArray(booking.history) && booking.history.length > 0 && (
+                <div className="pt-2 border-t border-indigo-100">
+                  <span className="text-slate-500 font-bold text-[11px] block mb-1.5">
+                    Riwayat Perubahan ({booking.history.length} Catatan):
+                  </span>
+                  <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                    {booking.history.slice().reverse().map((h, hIdx) => (
+                      <div key={hIdx} className="bg-white p-2 rounded border border-slate-100 text-[11px] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                        <div>
+                          <span className="font-bold text-slate-800 mr-1.5">{h.action}</span>
+                          <span className="text-slate-600">oleh</span>
+                          <strong className="text-indigo-700 ml-1">{h.userName}</strong>
+                          <span className="font-mono text-slate-500 ml-1">({h.userId})</span>
+                          {h.notes && <span className="text-slate-500 block text-[10px] italic">"{h.notes}"</span>}
+                        </div>
+                        <span className="text-[10px] text-slate-400 whitespace-nowrap shrink-0">
+                          {new Date(h.timestamp).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Footer Actions */}

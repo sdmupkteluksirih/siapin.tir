@@ -31,6 +31,21 @@ export interface UserAccount {
   avatarText?: string;
   lastLogin?: string;
   createdAt: string;
+  updatedAt?: string;
+  updatedById?: string;
+  updatedByName?: string;
+  updatedByRole?: string;
+}
+
+export interface BookingHistoryItem {
+  id?: string;
+  timestamp: string;
+  action: string; // e.g. 'DIBUAT', 'DISETUJUI (APPROVED)', 'DIBATALKAN', 'DIUBAH'
+  userId: string;
+  userName: string;
+  userRole: string;
+  userDepartment?: string;
+  notes?: string;
 }
 
 export interface Booking {
@@ -60,6 +75,20 @@ export interface Booking {
   status: BookingStatus;
   createdAt: string; // ISO string
   updatedAt?: string;
+
+  // Metadata 1 Source Bank Data: ID & Identitas Pembuat dan Pengubah
+  createdById?: string;
+  createdByName?: string;
+  createdByDepartment?: string;
+  createdByRole?: string;
+
+  lastModifiedById?: string;
+  lastModifiedByName?: string;
+  lastModifiedByDepartment?: string;
+  lastModifiedByRole?: string;
+  lastModifiedAt?: string;
+  lastAction?: string;
+  history?: BookingHistoryItem[];
 }
 
 export interface BookingFormData {
@@ -106,7 +135,7 @@ export interface RekapHarian {
   bookings: Booking[];
 }
 
-export type AdminTab = 'dashboard' | 'booking' | 'kalender' | 'rekap' | 'users' | 'logs' | 'pengaturan';
+export type AdminTab = 'dashboard' | 'booking' | 'kalender' | 'rekap' | 'users' | 'logs' | 'bank-data' | 'pengaturan';
 export type MainView = 'booking' | 'search' | 'admin' | 'login';
 
 export type ActivityAction = 

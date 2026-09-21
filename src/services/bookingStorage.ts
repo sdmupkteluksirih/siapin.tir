@@ -1,6 +1,7 @@
 import { Booking, BookingFormData, BookingStatus, RekapHarian } from '../types';
 import { calculateEndTime, generateDepartmentBookingNumber, getTodayDateString } from '../utils/timeUtils';
 import { activityLogger } from './activityLogger';
+import { authStorage } from './authStorage';
 
 const STORAGE_KEY = 'meeting_snack_bookings_v4';
 const LISTEN_EVENT = 'meeting_bookings_changed';
@@ -798,6 +799,13 @@ export const bookingStorage = {
   create(formData: BookingFormData): Booking {
     const all = this.getAll();
     const endTime = calculateEndTime(formData.startTime, formData.durationHours);
+    const currentUser = authStorage.getCurrentUser();
+    const actorId = currentUser?.username || currentUser?.id || formData.department || 'user';
+    const actorName = currentUser?.name || formData.bookerName || 'Pengguna';
+    const actorDept = currentUser?.department || formData.department || '-';
+    const actorRole = currentUser?.role || 'USER';
+    const nowIso = new Date().toISOString();
+
     const newBooking: Booking = {
       id: `b-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       bookingNumber: generateDepartmentBookingNumber(formData.department, undefined, all),
@@ -824,7 +832,28 @@ export const bookingStorage = {
         : (formData.invitationLetter ? [formData.invitationLetter] : undefined),
       notes: formData.notes ? formData.notes.trim() : undefined,
       status: 'BOOKED',
-      createdAt: new Date().toISOString()
+      createdAt: nowIso,
+      createdById: actorId,
+      createdByName: actorName,
+      createdByDepartment: actorDept,
+      createdByRole: actorRole,
+      lastModifiedById: actorId,
+      lastModifiedByName: actorName,
+      lastModifiedByDepartment: actorDept,
+      lastModifiedByRole: actorRole,
+      lastModifiedAt: nowIso,
+      lastAction: 'DIBUAT',
+      history: [
+        {
+          timestamp: nowIso,
+          action: 'DIBUAT',
+          userId: actorId,
+          userName: actorName,
+          userRole: actorRole,
+          userDepartment: actorDept,
+          notes: `Pengajuan booking awal`
+        }
+      ]
     };
 
     const updated = [newBooking, ...all];
@@ -840,7 +869,15 @@ export const bookingStorage = {
     fetch('/api/bookings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newBooking)
+      body: JSON.stringify({
+        ...newBooking,
+        _user: currentUser ? {
+          username: currentUser.username,
+          name: currentUser.name,
+          department: currentUser.department,
+          role: currentUser.role
+        } : undefined
+      })
     }).catch((err) => {
       console.warn('[SI APIN] Gagal sync booking ke server:', err);
     });
@@ -848,7 +885,7 @@ export const bookingStorage = {
     try {
       activityLogger.log(
         'BOOKING_CREATE',
-        `Pengajuan booking baru: ${newBooking.bookingNumber} - "${newBooking.meetingTitle}" (${newBooking.meetingLocation}, ${newBooking.meetingDate})`,
+        `Pengajuan booking baru oleh ${actorName} (${actorId}): ${newBooking.bookingNumber} - "${newBooking.meetingTitle}" (${newBooking.meetingLocation}, ${newBooking.meetingDate})`,
         newBooking.bookingNumber,
         { bookingId: newBooking.id, department: newBooking.department, bookerName: newBooking.bookerName }
       );
@@ -860,15 +897,44 @@ export const bookingStorage = {
   updateStatus(id: string, newStatus: BookingStatus, notes?: string, approvedBy?: string): Booking | undefined {
     const all = this.getAll();
     let updatedBooking: Booking | undefined;
+    const currentUser = authStorage.getCurrentUser();
+    const actorId = currentUser?.username || currentUser?.id || approvedBy || 'admin';
+    const actorName = currentUser?.name || approvedBy || 'Administrator';
+    const actorDept = currentUser?.department || 'Administrasi';
+    const actorRole = currentUser?.role || 'ADMIN';
+    const nowIso = new Date().toISOString();
+
+    const actionDesc = newStatus === 'CONFIRMED' 
+      ? 'DISETUJUI (APPROVED)' 
+      : (newStatus === 'CANCELLED' ? 'DIBATALKAN' : (newStatus === 'COMPLETED' ? 'SELESAI' : `STATUS: ${newStatus}`));
+
     const updated = all.map(b => {
       if (b.id === id) {
+        const existingHistory = Array.isArray(b.history) ? [...b.history] : [];
+        existingHistory.push({
+          timestamp: nowIso,
+          action: actionDesc,
+          userId: actorId,
+          userName: actorName,
+          userRole: actorRole,
+          userDepartment: actorDept,
+          notes: notes || undefined
+        });
+
         updatedBooking = {
           ...b,
           status: newStatus,
           approvalNotes: notes !== undefined ? notes : b.approvalNotes,
-          approvedBy: approvedBy !== undefined ? approvedBy : (newStatus === 'CONFIRMED' ? (b.approvedBy || 'Admin Utama') : b.approvedBy),
-          approvedAt: newStatus === 'CONFIRMED' ? new Date().toISOString() : b.approvedAt,
-          updatedAt: new Date().toISOString()
+          approvedBy: approvedBy !== undefined ? approvedBy : (newStatus === 'CONFIRMED' ? (b.approvedBy || actorName) : b.approvedBy),
+          approvedAt: newStatus === 'CONFIRMED' ? nowIso : b.approvedAt,
+          updatedAt: nowIso,
+          lastModifiedById: actorId,
+          lastModifiedByName: actorName,
+          lastModifiedByDepartment: actorDept,
+          lastModifiedByRole: actorRole,
+          lastModifiedAt: nowIso,
+          lastAction: actionDesc,
+          history: existingHistory
         };
         return updatedBooking;
       }
@@ -888,7 +954,15 @@ export const bookingStorage = {
       fetch(`/api/bookings/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedBooking)
+        body: JSON.stringify({
+          ...updatedBooking,
+          _user: currentUser ? {
+            username: currentUser.username,
+            name: currentUser.name,
+            department: currentUser.department,
+            role: currentUser.role
+          } : undefined
+        })
       }).catch((err) => {
         console.warn('[SI APIN] Gagal sync status ke server:', err);
       });
@@ -898,9 +972,9 @@ export const bookingStorage = {
         const statusLabel = newStatus === 'CONFIRMED' ? 'menyetujui (approve)' : (newStatus === 'CANCELLED' ? 'membatalkan' : `mengubah status menjadi ${newStatus}`);
         activityLogger.log(
           action,
-          `Admin ${statusLabel} booking ${updatedBooking.bookingNumber} ("${updatedBooking.meetingTitle}")`,
+          `${actorName} (${actorId}) ${statusLabel} booking ${updatedBooking.bookingNumber} ("${updatedBooking.meetingTitle}")`,
           updatedBooking.bookingNumber,
-          { status: newStatus, notes, approvedBy }
+          { status: newStatus, notes, approvedBy: actorName }
         );
       } catch {}
     }
@@ -911,21 +985,47 @@ export const bookingStorage = {
   approveWithEdits(id: string, edits: Partial<Booking>, approvedBy: string = 'Admin Utama', approvalNotes?: string): Booking | undefined {
     const all = this.getAll();
     let updatedBooking: Booking | undefined;
+    const currentUser = authStorage.getCurrentUser();
+    const actorId = currentUser?.username || currentUser?.id || 'admin';
+    const actorName = currentUser?.name || approvedBy || 'Administrator';
+    const actorDept = currentUser?.department || 'Administrasi';
+    const actorRole = currentUser?.role || 'ADMIN';
+    const nowIso = new Date().toISOString();
+    const actionDesc = 'DISETUJUI DENGAN PERUBAHAN JADWAL';
+
     const updated = all.map(b => {
       if (b.id === id) {
         const startTime = edits.startTime ?? b.startTime;
         const durationHours = edits.durationHours ?? b.durationHours;
         const endTime = calculateEndTime(startTime, durationHours);
 
+        const existingHistory = Array.isArray(b.history) ? [...b.history] : [];
+        existingHistory.push({
+          timestamp: nowIso,
+          action: actionDesc,
+          userId: actorId,
+          userName: actorName,
+          userRole: actorRole,
+          userDepartment: actorDept,
+          notes: approvalNotes ?? edits.approvalNotes ?? b.approvalNotes
+        });
+
         updatedBooking = {
           ...b,
           ...edits,
           status: 'CONFIRMED' as BookingStatus,
           endTime,
-          approvedBy,
+          approvedBy: actorName,
           approvalNotes: approvalNotes ?? edits.approvalNotes ?? b.approvalNotes,
-          approvedAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
+          approvedAt: nowIso,
+          updatedAt: nowIso,
+          lastModifiedById: actorId,
+          lastModifiedByName: actorName,
+          lastModifiedByDepartment: actorDept,
+          lastModifiedByRole: actorRole,
+          lastModifiedAt: nowIso,
+          lastAction: actionDesc,
+          history: existingHistory
         };
         return updatedBooking;
       }
@@ -945,7 +1045,15 @@ export const bookingStorage = {
       fetch(`/api/bookings/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedBooking)
+        body: JSON.stringify({
+          ...updatedBooking,
+          _user: currentUser ? {
+            username: currentUser.username,
+            name: currentUser.name,
+            department: currentUser.department,
+            role: currentUser.role
+          } : undefined
+        })
       }).catch((err) => {
         console.warn('[SI APIN] Gagal sync edit persetujuan ke server:', err);
       });
@@ -953,9 +1061,9 @@ export const bookingStorage = {
       try {
         activityLogger.log(
           'BOOKING_APPROVE',
-          `Admin menyetujui booking ${updatedBooking.bookingNumber} ("${updatedBooking.meetingTitle}") dengan penyesuaian jadwal (${updatedBooking.meetingDate} ${updatedBooking.startTime} - ${updatedBooking.endTime}, ${updatedBooking.meetingLocation})`,
+          `${actorName} (${actorId}) menyetujui booking ${updatedBooking.bookingNumber} ("${updatedBooking.meetingTitle}") dengan penyesuaian jadwal (${updatedBooking.meetingDate} ${updatedBooking.startTime} - ${updatedBooking.endTime}, ${updatedBooking.meetingLocation})`,
           updatedBooking.bookingNumber,
-          { approvedBy, approvalNotes }
+          { approvedBy: actorName, approvalNotes }
         );
       } catch {}
     }
@@ -966,17 +1074,42 @@ export const bookingStorage = {
   update(id: string, updates: Partial<Booking>): Booking | undefined {
     const all = this.getAll();
     let updatedBooking: Booking | undefined;
+    const currentUser = authStorage.getCurrentUser();
+    const actorId = currentUser?.username || currentUser?.id || 'admin';
+    const actorName = currentUser?.name || 'Administrator';
+    const actorDept = currentUser?.department || 'Administrasi';
+    const actorRole = currentUser?.role || 'ADMIN';
+    const nowIso = new Date().toISOString();
+
     const updated = all.map(b => {
       if (b.id === id) {
         const endTime = (updates.startTime || updates.durationHours)
           ? calculateEndTime(updates.startTime || b.startTime, updates.durationHours ?? b.durationHours)
           : b.endTime;
 
+        const existingHistory = Array.isArray(b.history) ? [...b.history] : [];
+        existingHistory.push({
+          timestamp: nowIso,
+          action: updates.lastAction || 'DATA DIPERBARUI',
+          userId: actorId,
+          userName: actorName,
+          userRole: actorRole,
+          userDepartment: actorDept,
+          notes: updates.notes || updates.approvalNotes || undefined
+        });
+
         updatedBooking = {
           ...b,
           ...updates,
           endTime,
-          updatedAt: new Date().toISOString()
+          updatedAt: nowIso,
+          lastModifiedById: actorId,
+          lastModifiedByName: actorName,
+          lastModifiedByDepartment: actorDept,
+          lastModifiedByRole: actorRole,
+          lastModifiedAt: nowIso,
+          lastAction: updates.lastAction || 'DATA DIPERBARUI',
+          history: existingHistory
         };
         return updatedBooking;
       }
@@ -996,7 +1129,15 @@ export const bookingStorage = {
       fetch(`/api/bookings/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedBooking)
+        body: JSON.stringify({
+          ...updatedBooking,
+          _user: currentUser ? {
+            username: currentUser.username,
+            name: currentUser.name,
+            department: currentUser.department,
+            role: currentUser.role
+          } : undefined
+        })
       }).catch((err) => {
         console.warn('[SI APIN] Gagal sync update ke server:', err);
       });
