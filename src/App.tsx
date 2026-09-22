@@ -9,6 +9,7 @@ import { SearchBooking } from './components/booking/SearchBooking';
 import { AdminLayout } from './components/admin/AdminLayout';
 import { LoginScreen } from './components/auth/LoginScreen';
 import { BackgroundSettingsModal } from './components/common/BackgroundSettingsModal';
+import { ChangePasswordModal } from './components/auth/ChangePasswordModal';
 import { Sliders, Sparkles } from 'lucide-react';
 
 export default function App() {
@@ -18,6 +19,7 @@ export default function App() {
   const [searchTargetNumber, setSearchTargetNumber] = useState<string>('');
   const [pendingBookingsCount, setPendingBookingsCount] = useState<number>(0);
   const [isBgSettingsOpen, setIsBgSettingsOpen] = useState(false);
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [bgSettings, setBgSettings] = useState<BackgroundSettings>(() => themeStorage.getSettings());
 
   // Listen to bg theme changes
@@ -201,6 +203,7 @@ export default function App() {
             currentUser={currentUser}
             onLogout={handleLogout}
             onOpenBackgroundSettings={() => setIsBgSettingsOpen(true)}
+            onOpenChangePassword={() => setIsChangePasswordOpen(true)}
           />
         )}
 
@@ -230,9 +233,20 @@ export default function App() {
           <AdminLayout
             initialTab={adminInitialTab}
             onNavigateToCustomer={() => handleNavigate('booking')}
+            onOpenChangePassword={() => setIsChangePasswordOpen(true)}
           />
         )}
       </div>
+
+      {/* In-App Change Password and Profile Modal */}
+      {currentUser && (
+        <ChangePasswordModal
+          currentUser={currentUser}
+          isOpen={isChangePasswordOpen}
+          onClose={() => setIsChangePasswordOpen(false)}
+          onUserUpdated={(fresh) => setCurrentUser(fresh)}
+        />
+      )}
 
       {/* Floating Quick Background Settings Trigger Button */}
       <button

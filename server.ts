@@ -1001,9 +1001,9 @@ app.post('/api/users/sync', (req, res) => {
   return res.json({ success: true, count: mergedList.length, users: mergedList });
 });
 
-// Single user update endpoint (Email, Password, Name, Role)
+// Single user update endpoint (Email, Password, Name, Role, Username, Department)
 app.post('/api/users/update', (req, res) => {
-  const { userId, email, password, name, role, _user } = req.body;
+  const { userId, email, password, name, role, username, department, _user } = req.body;
   if (!userId) {
     return res.status(400).json({ error: 'userId wajib diisi' });
   }
@@ -1018,6 +1018,19 @@ app.post('/api/users/update', (req, res) => {
   const actorName = actor.name || 'Administrator';
   const actorRole = actor.role || 'ADMIN';
   const nowIso = new Date().toISOString();
+
+  // If changing username, check for collision
+  if (username && String(username).trim()) {
+    const cleanNewUsername = String(username).trim().toLowerCase();
+    const collision = currentUsers.find((u: any) => 
+      u.username?.toLowerCase() === cleanNewUsername && 
+      u.id !== cleanUserId && 
+      u.username?.toLowerCase() !== cleanUserId.toLowerCase()
+    );
+    if (collision) {
+      return res.status(400).json({ error: `Username "${cleanNewUsername}" sudah digunakan oleh akun lain.` });
+    }
+  }
 
   const updatedList = currentUsers.map((existing: any) => {
     if (
@@ -1038,6 +1051,12 @@ app.post('/api/users/update', (req, res) => {
       }
       if (role && (role === 'ADMIN' || role === 'USER') && existing.username !== 'admin') {
         result.role = role;
+      }
+      if (username && String(username).trim() && existing.username !== 'admin') {
+        result.username = String(username).trim().toLowerCase();
+      }
+      if (department && String(department).trim()) {
+        result.department = String(department).trim();
       }
       result.updatedAt = nowIso;
       result.updatedById = actorId;
@@ -1210,42 +1229,130 @@ app.post('/api/auth/login', (req, res) => {
   const cleanUsername = String(username).trim().toLowerCase();
   const cleanPassword = String(password).trim();
 
+  // Comprehensive alias mapping for all 14 official accounts and divisions
   const aliasMap: Record<string, string> = {
+    // Admin 1 - Nofi Zahara
     'admin.nofi': 'nofi',
     'admin1': 'nofi',
     'nofizahara': 'nofi',
     'nofi zahara': 'nofi',
+    // Admin 2 - Resna Wati
     'admin.resna': 'resna',
     'admin2': 'resna',
     'resnawati': 'resna',
     'resna wati': 'resna',
+    // Admin 3 - Deri Tialis Peristiawan
     'admin.deri': 'deri',
     'admin3': 'deri',
     'deritialis': 'deri',
     'deri tialis': 'deri',
     'deri tialis peristiawan': 'deri',
+    // Admin 4 - Yuda Putra Utama
     'admin.yuda': 'yuda',
     'admin4': 'yuda',
     'yudaputra': 'yuda',
     'yuda putra': 'yuda',
     'yuda putra utama': 'yuda',
+    // Master Administrator / SDM Teluk Sirih
+    'admin': 'admin',
+    'administrator': 'admin',
+    'master': 'admin',
+    'master admin': 'admin',
+    'admin master': 'admin',
+    'admin utama': 'admin',
+    'sdm': 'admin',
+    'sdm upk': 'admin',
+    'sdm upk teluk sirih': 'admin',
+    'sdm teluk sirih': 'admin',
+    // PIC Keuangan & Umum
+    'keuangan & umum': 'keuangan',
+    'keuangan dan umum': 'keuangan',
+    'keuangan': 'keuangan',
+    'ku': 'keuangan',
+    'k&u': 'keuangan',
+    // PIC Operasi
+    'operasi': 'operasi',
+    'opr': 'operasi',
+    'ops': 'operasi',
+    // PIC Pemeliharaan
+    'pemeliharaan': 'pemeliharaan',
+    'har': 'pemeliharaan',
+    // PIC Enjiniring
+    'enjiniring': 'enjiniring',
+    'enj': 'enjiniring',
+    'engineering': 'enjiniring',
+    // PIC Coal & Ash Handling
+    'coal_ash': 'coal_ash',
+    'coal ash': 'coal_ash',
+    'coal & ash': 'coal_ash',
+    'coal and ash': 'coal_ash',
+    'coal & ash handling': 'coal_ash',
+    'coal and ash handling': 'coal_ash',
+    'cah': 'coal_ash',
+    // PIC K3 & Keamanan
+    'k3_keamanan': 'k3_keamanan',
+    'k3': 'k3_keamanan',
+    'k3 keamanan': 'k3_keamanan',
+    'k3 & keamanan': 'k3_keamanan',
+    'k3 dan keamanan': 'k3_keamanan',
+    'keamanan': 'k3_keamanan',
+    'keselamatan': 'k3_keamanan',
+    // PIC Lingkungan Hidup
+    'lingkungan': 'lingkungan',
+    'lingkungan hidup': 'lingkungan',
+    'lh': 'lingkungan',
+    'lin': 'lingkungan',
+    // PIC Pengadaan
+    'pengadaan': 'pengadaan',
+    'proc': 'pengadaan',
+    'procurement': 'pengadaan',
+    'dan': 'pengadaan',
+    // PIC Sistem Manajemen Terintegrasi
+    'sm_terintegrasi': 'sm_terintegrasi',
+    'smt': 'sm_terintegrasi',
+    'sm terintegrasi': 'sm_terintegrasi',
+    'sistem manajemen terintegrasi': 'sm_terintegrasi'
   };
 
   const targetUsername = aliasMap[cleanUsername] || cleanUsername;
   const users = readUsers();
-  const user = users.find((u: any) => 
+
+  // Multi-tier user lookup (Username, ID, Email, Full Name, Department)
+  let user = users.find((u: any) => 
     (u.username && u.username.toLowerCase() === targetUsername) ||
     (u.id && u.id.toLowerCase() === targetUsername) ||
     (u.email && u.email.toLowerCase() === cleanUsername) ||
     (u.email && u.email.toLowerCase() === targetUsername)
   );
 
+  // Fallback match by exact full name or department name
   if (!user) {
-    return res.status(401).json({ success: false, error: 'User ID / Username / Email tidak ditemukan.' });
+    user = users.find((u: any) => 
+      (u.name && u.name.toLowerCase() === cleanUsername) ||
+      (u.department && u.department.toLowerCase() === cleanUsername)
+    );
+  }
+
+  if (!user) {
+    return res.status(401).json({ 
+      success: false, 
+      error: `User ID atau Email "${username}" tidak ditemukan. Pastikan Anda menggunakan User ID bagian (contoh: keuangan, operasi, admin) atau alamat email terdaftar.` 
+    });
   }
 
   if (user.password !== cleanPassword) {
-    return res.status(401).json({ success: false, error: 'Password yang dimasukkan salah.' });
+    // Check if failure is due to case sensitivity / caps lock
+    if (user.password.toLowerCase() === cleanPassword.toLowerCase()) {
+      return res.status(401).json({ 
+        success: false, 
+        error: 'Kata Sandi salah karena perbedaan huruf besar/kecil (Caps Lock aktif). Mohon perhatikan penulisan huruf kapital dan huruf kecil sesuai yang diatur admin.' 
+      });
+    }
+
+    return res.status(401).json({ 
+      success: false, 
+      error: `Kata Sandi yang dimasukkan untuk akun "${user.username}" salah. Jika admin baru saja mengubah kata sandi Anda, pastikan memasukkan kata sandi terbaru.` 
+    });
   }
 
   const updatedUser = {

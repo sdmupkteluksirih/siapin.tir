@@ -11,7 +11,8 @@ import {
   LogOut,
   X,
   ShieldCheck,
-  Database
+  Database,
+  KeyRound
 } from 'lucide-react';
 
 interface AdminSidebarProps {
@@ -20,6 +21,7 @@ interface AdminSidebarProps {
   pendingCount?: number;
   isOpenMobile?: boolean;
   onCloseMobile?: () => void;
+  onOpenChangePassword?: () => void;
 }
 
 const MENU_ITEMS = [
@@ -38,6 +40,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
   pendingCount = 0,
   isOpenMobile = false,
   onCloseMobile,
+  onOpenChangePassword
 }) => {
   const currentUser = authStorage.getCurrentUser();
 
@@ -165,19 +168,32 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
               <span className="font-medium text-slate-300">Sistem Aktif</span>
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                if (window.confirm('Keluar dari sesi Administrator?')) {
-                  authStorage.logout();
-                }
-              }}
-              className="text-slate-400 hover:text-rose-400 transition-colors flex items-center gap-1 text-[11px] font-semibold cursor-pointer"
-              title="Keluar / Logout"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              <span>Keluar</span>
-            </button>
+            <div className="flex items-center gap-3">
+              {onOpenChangePassword && (
+                <button
+                  type="button"
+                  onClick={onOpenChangePassword}
+                  className="text-slate-400 hover:text-indigo-300 transition-colors flex items-center gap-1 text-[11px] font-semibold cursor-pointer"
+                  title="Ganti Password Saya"
+                >
+                  <KeyRound className="w-3.5 h-3.5" />
+                  <span>Sandi</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  if (window.confirm('Keluar dari sesi Administrator?')) {
+                    authStorage.logout();
+                  }
+                }}
+                className="text-slate-400 hover:text-rose-400 transition-colors flex items-center gap-1 text-[11px] font-semibold cursor-pointer"
+                title="Keluar / Logout"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Keluar</span>
+              </button>
+            </div>
           </div>
           <p className="text-[11px] text-slate-500">
             Internal Corporate Workspace UPK Teluk Sirih

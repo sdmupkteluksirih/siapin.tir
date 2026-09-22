@@ -399,31 +399,95 @@ export const authStorage = {
   login(username: string, password: string): { success: boolean; user?: UserAccount; error?: string } {
     const users = this.getAllUsers();
     const cleanUsername = username.trim().toLowerCase();
+    const cleanPassword = password.trim();
 
     // Map common aliases to their respective usernames
     const aliasMap: Record<string, string> = {
+      // Admin 1 - Nofi Zahara
       'admin.nofi': 'nofi',
       'admin1': 'nofi',
       'nofizahara': 'nofi',
       'nofi zahara': 'nofi',
+      // Admin 2 - Resna Wati
       'admin.resna': 'resna',
       'admin2': 'resna',
       'resnawati': 'resna',
       'resna wati': 'resna',
+      // Admin 3 - Deri Tialis Peristiawan
       'admin.deri': 'deri',
       'admin3': 'deri',
       'deritialis': 'deri',
       'deri tialis': 'deri',
       'deri tialis peristiawan': 'deri',
+      // Admin 4 - Yuda Putra Utama
       'admin.yuda': 'yuda',
       'admin4': 'yuda',
       'yudaputra': 'yuda',
       'yuda putra': 'yuda',
       'yuda putra utama': 'yuda',
+      // Master Administrator / SDM Teluk Sirih
+      'admin': 'admin',
+      'administrator': 'admin',
+      'master': 'admin',
+      'master admin': 'admin',
+      'admin master': 'admin',
+      'admin utama': 'admin',
+      'sdm': 'admin',
+      'sdm upk': 'admin',
+      'sdm upk teluk sirih': 'admin',
+      'sdm teluk sirih': 'admin',
+      // PIC Keuangan & Umum
+      'keuangan & umum': 'keuangan',
+      'keuangan dan umum': 'keuangan',
+      'keuangan': 'keuangan',
+      'ku': 'keuangan',
+      'k&u': 'keuangan',
+      // PIC Operasi
+      'operasi': 'operasi',
+      'opr': 'operasi',
+      'ops': 'operasi',
+      // PIC Pemeliharaan
+      'pemeliharaan': 'pemeliharaan',
+      'har': 'pemeliharaan',
+      // PIC Enjiniring
+      'enjiniring': 'enjiniring',
+      'enj': 'enjiniring',
+      'engineering': 'enjiniring',
+      // PIC Coal & Ash Handling
+      'coal_ash': 'coal_ash',
+      'coal ash': 'coal_ash',
+      'coal & ash': 'coal_ash',
+      'coal and ash': 'coal_ash',
+      'coal & ash handling': 'coal_ash',
+      'coal and ash handling': 'coal_ash',
+      'cah': 'coal_ash',
+      // PIC K3 & Keamanan
+      'k3_keamanan': 'k3_keamanan',
+      'k3': 'k3_keamanan',
+      'k3 keamanan': 'k3_keamanan',
+      'k3 & keamanan': 'k3_keamanan',
+      'k3 dan keamanan': 'k3_keamanan',
+      'keamanan': 'k3_keamanan',
+      'keselamatan': 'k3_keamanan',
+      // PIC Lingkungan Hidup
+      'lingkungan': 'lingkungan',
+      'lingkungan hidup': 'lingkungan',
+      'lh': 'lingkungan',
+      'lin': 'lingkungan',
+      // PIC Pengadaan
+      'pengadaan': 'pengadaan',
+      'proc': 'pengadaan',
+      'procurement': 'pengadaan',
+      'dan': 'pengadaan',
+      // PIC Sistem Manajemen Terintegrasi
+      'sm_terintegrasi': 'sm_terintegrasi',
+      'smt': 'sm_terintegrasi',
+      'sm terintegrasi': 'sm_terintegrasi',
+      'sistem manajemen terintegrasi': 'sm_terintegrasi'
     };
 
     const targetUsername = aliasMap[cleanUsername] || cleanUsername;
-    const user = users.find(u => 
+    let user = users.find(u => 
       u.username.toLowerCase() === targetUsername ||
       u.id.toLowerCase() === targetUsername ||
       (u.email && u.email.toLowerCase() === cleanUsername) ||
@@ -431,11 +495,30 @@ export const authStorage = {
     );
 
     if (!user) {
-      return { success: false, error: 'User ID / Username / Email tidak ditemukan.' };
+      user = users.find(u => 
+        (u.name && u.name.toLowerCase() === cleanUsername) ||
+        (u.department && u.department.toLowerCase() === cleanUsername)
+      );
     }
 
-    if (user.password !== password) {
-      return { success: false, error: 'Password yang dimasukkan salah.' };
+    if (!user) {
+      return { 
+        success: false, 
+        error: `User ID atau Email "${username}" tidak ditemukan. Pastikan Anda menggunakan User ID bagian (contoh: keuangan, operasi, admin) atau alamat email terdaftar.` 
+      };
+    }
+
+    if (user.password !== cleanPassword) {
+      if (user.password.toLowerCase() === cleanPassword.toLowerCase()) {
+        return { 
+          success: false, 
+          error: 'Kata Sandi salah karena perbedaan huruf besar/kecil (Caps Lock aktif). Mohon perhatikan huruf kapital dan huruf kecil sesuai yang diatur admin.' 
+        };
+      }
+      return { 
+        success: false, 
+        error: `Kata Sandi yang dimasukkan untuk akun "${user.username}" salah. Jika admin baru saja mengubah kata sandi Anda, pastikan memasukkan kata sandi terbaru.` 
+      };
     }
 
     const updatedUser = {
@@ -846,6 +929,8 @@ export const authStorage = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId,
+          username: updates.username,
+          department: updates.department,
           email: updates.email,
           password: updates.password,
           name: updates.name,
@@ -860,6 +945,10 @@ export const authStorage = {
         })
       });
       if (res.ok) {
+        const json = await res.json().catch(() => null);
+        if (json?.users) {
+          applyServerUsersUpdate(json.users);
+        }
         return true;
       }
     } catch {

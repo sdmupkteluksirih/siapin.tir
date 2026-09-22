@@ -11,7 +11,8 @@ import {
   Menu,
   X,
   ChevronRight,
-  UserCheck
+  UserCheck,
+  KeyRound
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -21,6 +22,7 @@ interface NavbarProps {
   currentUser?: UserAccount | null;
   onLogout?: () => void;
   onOpenBackgroundSettings?: () => void;
+  onOpenChangePassword?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -29,7 +31,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   pendingBookingsCount = 0,
   currentUser,
   onLogout,
-  onOpenBackgroundSettings
+  onOpenBackgroundSettings,
+  onOpenChangePassword
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -270,6 +273,34 @@ export const Navbar: React.FC<NavbarProps> = ({
                   </div>
                   <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-cyan-700 transition-transform group-hover:translate-x-0.5" />
                 </button>
+
+                {/* 4. Menu: Ubah Kata Sandi & Profil */}
+                {onOpenChangePassword && (
+                  <button
+                    type="button"
+                    id="menu-item-ubah-sandi"
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      onOpenChangePassword();
+                    }}
+                    className="w-full p-2.5 rounded-2xl text-left flex items-center justify-between hover:bg-indigo-50/80 text-slate-700 hover:text-indigo-900 transition-all cursor-pointer group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center group-hover:bg-indigo-200 transition-colors">
+                        <KeyRound className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <span className="text-xs sm:text-sm font-bold block leading-tight">
+                          Ubah Sandi & Profil
+                        </span>
+                        <span className="text-[10px] text-slate-400 group-hover:text-indigo-700 block">
+                          Ganti password akun langsung di aplikasi
+                        </span>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-indigo-700 transition-transform group-hover:translate-x-0.5" />
+                  </button>
+                )}
 
                 {/* Optional Admin Panel Menu (Only for Admin) */}
                 {isAdmin && (

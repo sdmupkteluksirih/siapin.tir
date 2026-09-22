@@ -19,17 +19,20 @@ import {
   UtensilsCrossed, 
   Settings,
   Bell,
-  ShieldCheck
+  ShieldCheck,
+  KeyRound
 } from 'lucide-react';
 
 interface AdminLayoutProps {
   initialTab?: AdminTab;
   onNavigateToCustomer: () => void;
+  onOpenChangePassword?: () => void;
 }
 
 export const AdminLayout: React.FC<AdminLayoutProps> = ({
   initialTab = 'dashboard',
-  onNavigateToCustomer
+  onNavigateToCustomer,
+  onOpenChangePassword
 }) => {
   const [currentTab, setCurrentTab] = useState<AdminTab>(initialTab);
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -58,6 +61,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
         pendingCount={pendingCount}
         isOpenMobile={isMobileSidebarOpen}
         onCloseMobile={() => setIsMobileSidebarOpen(false)}
+        onOpenChangePassword={onOpenChangePassword}
       />
 
       {/* Main Admin Content Wrapper with left padding for desktop sidebar and top padding for fixed header */}
@@ -91,6 +95,18 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
+            {onOpenChangePassword && (
+              <button
+                type="button"
+                id="btn-admin-change-password"
+                onClick={onOpenChangePassword}
+                className="px-3.5 py-2 rounded-xl border border-indigo-500/40 bg-indigo-950/60 hover:bg-indigo-900/80 font-bold text-xs text-indigo-200 hover:text-white transition-colors cursor-pointer shadow-xs flex items-center gap-1.5"
+                title="Ubah kata sandi akun administrator Anda"
+              >
+                <KeyRound className="w-3.5 h-3.5 text-indigo-400" />
+                <span className="hidden sm:inline">Sandi Saya</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={onNavigateToCustomer}
