@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Booking } from '../../types';
 import { bookingStorage } from '../../services/bookingStorage';
+import { authStorage } from '../../services/authStorage';
 import { formatDateIndo, formatDuration } from '../../utils/timeUtils';
 import { getBookingAttachments, formatFileSize } from '../../utils/fileUtils';
 import { StatusBadge } from '../common/StatusBadge';
@@ -19,7 +20,9 @@ import {
   FileText,
   AlertCircle,
   HelpCircle,
-  MessageSquare
+  MessageSquare,
+  ShieldCheck,
+  RefreshCw
 } from 'lucide-react';
 
 interface SearchBookingProps {
@@ -31,33 +34,49 @@ export const SearchBooking: React.FC<SearchBookingProps> = ({
   initialSearchQuery = '',
   onNewBooking
 }) => {
+  const currentUser = authStorage.getCurrentUser();
   const [query, setQuery] = useState(initialSearchQuery);
+  const [activeTab, setActiveTab] = useState<'ALL' | 'MY_DEPT'>('ALL');
   const [results, setResults] = useState<Booking[]>([]);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [isWaModalOpen, setIsWaModalOpen] = useState(false);
 
-  useEffect(() => {
+  const refreshList = useCallback(() => {
+    const all = bookingStorage.getAll();
     if (query.trim()) {
       const found = bookingStorage.search(query);
-      setResults(found);
-      if (found.length === 1) {
-        setSelectedBooking(found[0]);
+      if (activeTab === 'MY_DEPT' && currentUser?.department) {
+        setResults(found.filter(b => b.department.toLowerCase() === currentUser.department.toLowerCase()));
+      } else {
+        setResults(found);
       }
     } else {
-      setResults(bookingStorage.getAll().slice(0, 5));
+      if (activeTab === 'MY_DEPT' && currentUser?.department) {
+        setResults(all.filter(b => b.department.toLowerCase() === currentUser.department.toLowerCase()));
+      } else {
+        setResults(all);
+      }
     }
-  }, [query]);
+    // Update selected booking if currently open
+    if (selectedBooking) {
+      const updated = all.find(b => b.id === selectedBooking.id);
+      if (updated) setSelectedBooking(updated);
+    }
+  }, [query, activeTab, currentUser, selectedBooking]);
+
+  // Real-time synchronization subscription
+  useEffect(() => {
+    refreshList();
+    const unsub = bookingStorage.subscribe(() => {
+      refreshList();
+    });
+    return () => unsub();
+  }, [refreshList]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    const found = bookingStorage.search(query);
-    setResults(found);
-    if (found.length > 0) {
-      setSelectedBooking(found[0]);
-    } else {
-      setSelectedBooking(null);
-    }
+    refreshList();
   };
 
   const handleCancelBooking = (bookingId: string) => {
@@ -106,6 +125,41 @@ export const SearchBooking: React.FC<SearchBookingProps> = ({
             Cari
           </button>
         </form>
+
+        {/* Filter Tabs for User & Real-time Integration Indicator */}
+        <div className="max-w-xl mx-auto mt-4 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl text-xs font-semibold">
+            <button
+              type="button"
+              onClick={() => setActiveTab('ALL')}
+              className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
+                activeTab === 'ALL'
+                  ? 'bg-white text-indigo-700 shadow-2xs font-bold'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Semua Agenda Rapat
+            </button>
+            {currentUser?.department && (
+              <button
+                type="button"
+                onClick={() => setActiveTab('MY_DEPT')}
+                className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
+                  activeTab === 'MY_DEPT'
+                    ? 'bg-white text-indigo-700 shadow-2xs font-bold'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Bagian {currentUser.department}
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span>Sinkronisasi Real-Time Aktif</span>
+          </div>
+        </div>
       </div>
 
       {/* Results & Detail */}
@@ -120,7 +174,7 @@ export const SearchBooking: React.FC<SearchBookingProps> = ({
               <button
                 type="button"
                 onClick={() => setQuery('')}
-                className="text-xs text-indigo-600 hover:underline"
+                className="text-xs text-indigo-600 hover:underline cursor-pointer"
               >
                 Reset
               </button>
@@ -154,9 +208,13 @@ export const SearchBooking: React.FC<SearchBookingProps> = ({
                     <h4 className="text-sm font-bold text-slate-900 line-clamp-1">
                       {item.meetingTitle}
                     </h4>
+                    <div className="text-[11px] font-medium text-indigo-700 bg-indigo-50/80 px-2 py-0.5 rounded mt-1.5 flex items-center gap-1 truncate">
+                      <MapPin className="w-3 h-3 shrink-0" />
+                      <span className="truncate">{item.meetingLocation}</span>
+                    </div>
                     <div className="flex items-center justify-between text-xs text-slate-500 mt-2 pt-2 border-t border-slate-100">
                       <span>{formatDateIndo(item.meetingDate, false)}</span>
-                      <span>{item.startTime} WIB</span>
+                      <span>{item.startTime} WIB ({item.durationHours}j)</span>
                     </div>
                   </div>
                 );

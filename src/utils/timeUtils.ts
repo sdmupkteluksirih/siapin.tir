@@ -217,6 +217,11 @@ export interface RoomConflictResult {
   reason?: string;
 }
 
+export function normalizeRoomName(name?: string): string {
+  if (!name) return '';
+  return name.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
 export function checkRoomConflict(
   room: string,
   date: string,
@@ -228,6 +233,7 @@ export function checkRoomConflict(
   if (
     !room ||
     room === 'Tidak menggunakan ruang meeting' ||
+    normalizeRoomName(room) === normalizeRoomName('Tidak menggunakan ruang meeting') ||
     !date ||
     !startTime ||
     !durationHours
@@ -235,13 +241,14 @@ export function checkRoomConflict(
     return { isLocked: false, conflictingBookings: [] };
   }
 
+  const normProposedRoom = normalizeRoomName(room);
   const proposedEndTime = calculateEndTime(startTime, durationHours);
 
   const conflicts = allBookings.filter((b) => {
     if (!b || b.status === 'CANCELLED') return false;
     if (excludeBookingId && b.id === excludeBookingId) return false;
     if (b.meetingDate !== date) return false;
-    if (b.meetingLocation !== room) return false;
+    if (normalizeRoomName(b.meetingLocation) !== normProposedRoom) return false;
 
     // Check time overlap
     return isTimeOverlapping(startTime, proposedEndTime, b.startTime, b.endTime);

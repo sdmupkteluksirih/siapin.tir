@@ -7,7 +7,8 @@ import {
   formatDuration, 
   getTodayDateString, 
   checkRoomConflict,
-  isTimeOverlapping 
+  isTimeOverlapping,
+  normalizeRoomName
 } from '../../utils/timeUtils';
 import { 
   Calendar as CalendarIcon, 
@@ -235,7 +236,8 @@ export const RoomAgendaCalendar: React.FC<RoomAgendaCalendarProps> = ({
   ) => {
     const startStr = decimalToTimeString(startDec);
     const endStr = decimalToTimeString(startDec + duration);
-    const bookingsInRoom = inspectedDayBookings.filter(b => b.meetingLocation === roomName);
+    const normTargetRoom = normalizeRoomName(roomName);
+    const bookingsInRoom = inspectedDayBookings.filter(b => normalizeRoomName(b.meetingLocation) === normTargetRoom);
 
     for (const b of bookingsInRoom) {
       if (isTimeOverlapping(startStr, endStr, b.startTime, b.endTime)) {
@@ -871,8 +873,9 @@ export const RoomAgendaCalendar: React.FC<RoomAgendaCalendarProps> = ({
             {/* 4 Physical Meeting Rooms with Visual Horizontal Timeline Bars */}
             <div className="space-y-4">
               {PHYSICAL_ROOMS.map((room) => {
+                const normRoomName = normalizeRoomName(room.name);
                 // Bookings in this room on inspected date
-                const roomBookings = inspectedDayBookings.filter(b => b.meetingLocation === room.name);
+                const roomBookings = inspectedDayBookings.filter(b => normalizeRoomName(b.meetingLocation) === normRoomName);
                 
                 // Conflict checking with active time
                 const conflictCheck = checkRoomConflict(
@@ -884,7 +887,7 @@ export const RoomAgendaCalendar: React.FC<RoomAgendaCalendarProps> = ({
                 );
 
                 const isLocked = conflictCheck.isLocked;
-                const isSelected = selectedRoom === room.name && inspectedDate === bookingDate;
+                const isSelected = normalizeRoomName(selectedRoom) === normRoomName && inspectedDate === bookingDate;
                 const isRoomBeingDragged = dragState?.roomId === room.id;
                 const isCurrentDragColliding = isRoomBeingDragged && dragState?.isColliding;
 

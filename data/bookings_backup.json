@@ -1,5 +1,51 @@
 [
   {
+    "id": "test-att-1",
+    "bookingNumber": "TEST-ATT-01",
+    "meetingTitle": "Test Attachment",
+    "meetingDate": "2026-09-23",
+    "startTime": "14:00",
+    "endTime": "15:00",
+    "durationHours": 1,
+    "department": "Operasi",
+    "bookerName": "Tester",
+    "whatsapp": "08123456789",
+    "meetingLocation": "War room lt. 3",
+    "participantCount": 10,
+    "snackRingan": "Tidak Ada",
+    "snackBerat": "Tidak Ada",
+    "makanSiang": "Tidak",
+    "status": "BOOKED",
+    "createdAt": "2026-09-23T07:18:00.000Z",
+    "invitationLetter": {
+      "name": "test.pdf",
+      "size": 1234,
+      "type": "application/pdf",
+      "dataUrl": "data:application/pdf;base64,JVBERi0xLjQK..."
+    },
+    "createdById": "Operasi",
+    "createdByName": "Tester",
+    "createdByDepartment": "Operasi",
+    "createdByRole": "USER",
+    "lastModifiedById": "Operasi",
+    "lastModifiedByName": "Tester",
+    "lastModifiedByDepartment": "Operasi",
+    "lastModifiedByRole": "USER",
+    "lastModifiedAt": "2026-09-23T07:18:34.862Z",
+    "lastAction": "DIBUAT",
+    "history": [
+      {
+        "timestamp": "2026-09-23T07:18:34.862Z",
+        "action": "DIBUAT",
+        "userId": "Operasi",
+        "userName": "Tester",
+        "userRole": "USER",
+        "userDepartment": "Operasi",
+        "notes": "Pengajuan booking TEST-ATT-01"
+      }
+    ]
+  },
+  {
     "id": "b-keu-20260908-01",
     "bookingNumber": "KSA-20260908-0001",
     "meetingDate": "2026-09-08",
@@ -540,5 +586,45 @@
     "notes": "Sajikan teh hangat, kopi, dan air mineral.",
     "status": "CONFIRMED",
     "createdAt": "2026-08-19T13:00:00.000Z"
+  },
+  {
+    "id": "test-123",
+    "bookingNumber": "TEST-01",
+    "meetingTitle": "Test Meeting",
+    "meetingDate": "2026-09-23",
+    "startTime": "10:00",
+    "endTime": "11:00",
+    "durationHours": 1,
+    "department": "Operasi",
+    "bookerName": "Tester",
+    "whatsapp": "08123456789",
+    "meetingLocation": "War room lt. 3",
+    "participantCount": 10,
+    "snackRingan": "Tidak Ada",
+    "snackBerat": "Tidak Ada",
+    "makanSiang": "Tidak",
+    "status": "BOOKED",
+    "createdAt": "2026-09-23T07:16:00.000Z",
+    "createdById": "Operasi",
+    "createdByName": "Tester",
+    "createdByDepartment": "Operasi",
+    "createdByRole": "USER",
+    "lastModifiedById": "Operasi",
+    "lastModifiedByName": "Tester",
+    "lastModifiedByDepartment": "Operasi",
+    "lastModifiedByRole": "USER",
+    "lastModifiedAt": "2026-09-23T07:16:04.977Z",
+    "lastAction": "DIBUAT",
+    "history": [
+      {
+        "timestamp": "2026-09-23T07:16:04.977Z",
+        "action": "DIBUAT",
+        "userId": "Operasi",
+        "userName": "Tester",
+        "userRole": "USER",
+        "userDepartment": "Operasi",
+        "notes": "Pengajuan booking TEST-01"
+      }
+    ]
   }
 ]

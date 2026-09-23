@@ -9,7 +9,7 @@ import { Step2Konsumsi } from './Step2Konsumsi';
 import { Step3Pemesan } from './Step3Pemesan';
 import { BookingSuccess } from './BookingSuccess';
 import { HeroBanner } from '../common/HeroBanner';
-import { Layers, UtensilsCrossed, CheckCircle2 } from 'lucide-react';
+import { Layers, UtensilsCrossed, CheckCircle2, ShieldAlert, X } from 'lucide-react';
 
 interface BookingWizardProps {
   onCheckStatus: (bookingNumber: string) => void;
@@ -64,6 +64,7 @@ export const BookingWizard: React.FC<BookingWizardProps> = ({
   const [formData, setFormData] = useState<BookingFormData>(getInitialFormData);
   const [createdBooking, setCreatedBooking] = useState<Booking | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   // Sync user info if currentUser changes and fields are empty
   useEffect(() => {
@@ -79,22 +80,30 @@ export const BookingWizard: React.FC<BookingWizardProps> = ({
   }, [currentUser]);
 
   const handleFieldChange = (field: keyof BookingFormData, value: any) => {
+    if (submitError) setSubmitError(null);
     setFormData((prev) => ({
       ...prev,
       [field]: value
     }));
   };
 
-  const handleConfirmSubmit = () => {
+  const handleConfirmSubmit = async () => {
     setIsSubmitting(true);
+    setSubmitError(null);
     try {
-      const newBooking = bookingStorage.create(formData);
+      const newBooking = await bookingStorage.createAsync(formData);
       setCreatedBooking(newBooking);
       if (onBookingCreated) {
         onBookingCreated(newBooking);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to create booking', err);
+      const errMsg = err?.message || 'Gagal menyimpan pemesanan. Silakan periksa koneksi Anda.';
+      setSubmitError(errMsg);
+      // If conflict, return user to step 1 so they can choose another available slot
+      if (errMsg.toLowerCase().includes('interlock') || errMsg.toLowerCase().includes('bentrok') || errMsg.toLowerCase().includes('terisi')) {
+        setStep(1);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -103,6 +112,7 @@ export const BookingWizard: React.FC<BookingWizardProps> = ({
   const handleResetForNew = () => {
     setFormData(getInitialFormData());
     setCreatedBooking(null);
+    setSubmitError(null);
     setStep(1);
   };
 
@@ -178,6 +188,32 @@ export const BookingWizard: React.FC<BookingWizardProps> = ({
           })}
         </div>
       </div>
+
+      {/* Auto-Interlock Conflict or Submission Error Banner */}
+      {submitError && (
+        <div className="p-4 rounded-2xl bg-rose-600 text-white shadow-lg flex items-start gap-3.5 animate-in fade-in slide-in-from-top-2 border border-rose-500">
+          <ShieldAlert className="w-5 h-5 text-amber-200 shrink-0 mt-0.5" />
+          <div className="flex-1 text-xs">
+            <div className="font-bold text-sm flex items-center gap-2">
+              <span>Peringatan Auto-Interlock / Pengajuan Gagal</span>
+              <span className="px-2 py-0.5 rounded bg-rose-800 text-[10px] font-mono uppercase tracking-wider font-bold">Terkunci</span>
+            </div>
+            <p className="text-rose-100 mt-1 leading-relaxed">
+              {submitError}
+            </p>
+            <p className="text-[11px] text-amber-200 mt-1.5 font-medium">
+              💡 Silakan pilih ruangan rapat lain atau sesuaikan jam rapat Anda di formulir di bawah ini.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSubmitError(null)}
+            className="p-1 rounded-lg text-white/80 hover:text-white hover:bg-rose-700 transition cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* Step View Container */}
       <div className="transition-all">

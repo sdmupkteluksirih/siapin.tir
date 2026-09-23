@@ -56,6 +56,7 @@ export const AdminSettings: React.FC = () => {
   const [passMap, setPassMap] = useState<Record<string, string>>({});
   const [showPassMap, setShowPassMap] = useState<Record<string, boolean>>({});
   const [emailMap, setEmailMap] = useState<Record<string, string>>({});
+  const [phoneMap, setPhoneMap] = useState<Record<string, string>>({});
   const [isSavingMap, setIsSavingMap] = useState<Record<string, boolean>>({});
   const [savedStatusMap, setSavedStatusMap] = useState<Record<string, string>>({});
   const [isSyncingAll, setIsSyncingAll] = useState(false);
@@ -93,6 +94,13 @@ export const AdminSettings: React.FC = () => {
         });
         return next;
       });
+      setPhoneMap(prev => {
+        const next = { ...prev };
+        refreshed.forEach(u => {
+          next[u.id] = u.phone || '';
+        });
+        return next;
+      });
     }).catch(() => {});
 
     const unsubTheme = themeStorage.subscribe((updated) => {
@@ -113,6 +121,13 @@ export const AdminSettings: React.FC = () => {
         const next = { ...prev };
         users.forEach(u => {
           next[u.id] = u.email || '';
+        });
+        return next;
+      });
+      setPhoneMap(prev => {
+        const next = { ...prev };
+        users.forEach(u => {
+          next[u.id] = u.phone || '';
         });
         return next;
       });
@@ -140,6 +155,13 @@ export const AdminSettings: React.FC = () => {
       });
       return next;
     });
+    setPhoneMap(prev => {
+      const next = { ...prev };
+      allUsers.forEach(u => {
+        next[u.id] = u.phone || '';
+      });
+      return next;
+    });
   }, [allUsers]);
 
   const handleTogglePass = (userId: string) => {
@@ -150,18 +172,21 @@ export const AdminSettings: React.FC = () => {
   const handleSyncAllAccounts = async () => {
     setIsSyncingAll(true);
     try {
-      // Gather any modified accounts from local inputs (passMap / emailMap)
-      const modifications: Array<{ id: string; password?: string; email?: string }> = [];
+      // Gather any modified accounts from local inputs (passMap / emailMap / phoneMap)
+      const modifications: Array<{ id: string; password?: string; email?: string; phone?: string }> = [];
       allUsers.forEach(u => {
         const p = passMap[u.id];
         const e = emailMap[u.id];
+        const ph = phoneMap[u.id];
         const hasNewPass = p !== undefined && p.trim().length >= 4 && p.trim() !== u.password;
         const hasNewEmail = e !== undefined && e.trim() !== (u.email || '');
-        if (hasNewPass || hasNewEmail) {
+        const hasNewPhone = ph !== undefined && ph.trim() !== (u.phone || '');
+        if (hasNewPass || hasNewEmail || hasNewPhone) {
           modifications.push({
             id: u.id,
             password: hasNewPass ? p.trim() : undefined,
-            email: hasNewEmail ? e.trim() : undefined
+            email: hasNewEmail ? e.trim() : undefined,
+            phone: hasNewPhone ? ph.trim() : undefined
           });
         }
       });
@@ -182,6 +207,13 @@ export const AdminSettings: React.FC = () => {
         });
         return next;
       });
+      setPhoneMap(prev => {
+        const next = { ...prev };
+        refreshed.forEach(u => {
+          next[u.id] = u.phone || '';
+        });
+        return next;
+      });
       setSyncToast({
         message: 'Seluruh akun berhasil disinkronkan & diperbarui langsung ke server pusat!',
         type: 'success'
@@ -197,10 +229,11 @@ export const AdminSettings: React.FC = () => {
     }
   };
 
-  // Save account (Email + Password) explicitly on button click
-  const handleSaveAccount = async (user: UserAccount, overridePass?: string, overrideEmail?: string) => {
+  // Save account (Email + Phone + Password) explicitly on button click
+  const handleSaveAccount = async (user: UserAccount, overridePass?: string, overrideEmail?: string, overridePhone?: string) => {
     const activePass = (overridePass !== undefined ? overridePass : (passMap[user.id] ?? user.password)).trim();
     const activeEmail = (overrideEmail !== undefined ? overrideEmail : (emailMap[user.id] ?? (user.email || ''))).trim();
+    const activePhone = (overridePhone !== undefined ? overridePhone : (phoneMap[user.id] ?? (user.phone || ''))).trim();
 
     if (activePass.length < 4) {
       setSavedStatusMap(prev => ({ ...prev, [user.id]: 'Gagal: Password minimal 4 karakter' }));
@@ -218,7 +251,8 @@ export const AdminSettings: React.FC = () => {
     try {
       const success = await authStorage.saveUserAccountAsync(user.id, {
         password: activePass,
-        email: activeEmail
+        email: activeEmail,
+        phone: activePhone
       });
 
       setIsSavingMap(prev => ({ ...prev, [user.id]: false }));
@@ -227,6 +261,7 @@ export const AdminSettings: React.FC = () => {
         setSavedStatusMap(prev => ({ ...prev, [user.id]: 'Tersimpan ke Server Pusat' }));
         setPassMap(prev => ({ ...prev, [user.id]: activePass }));
         setEmailMap(prev => ({ ...prev, [user.id]: activeEmail }));
+        setPhoneMap(prev => ({ ...prev, [user.id]: activePhone }));
         
         const currentUsers = authStorage.getAllUsers();
         setAllUsers(currentUsers);
@@ -769,16 +804,25 @@ export const AdminSettings: React.FC = () => {
                 user.name.toLowerCase().includes(q) ||
                 user.username.toLowerCase().includes(q) ||
                 user.department.toLowerCase().includes(q) ||
-                (user.email || '').toLowerCase().includes(q)
+                (user.email || '').toLowerCase().includes(q) ||
+                (user.phone || '').toLowerCase().includes(q)
               );
             })
             .map((user) => {
               const isAdmin = user.role === 'ADMIN';
               const currentEmail = emailMap[user.id] !== undefined ? emailMap[user.id] : (user.email || '');
+              const currentPhone = phoneMap[user.id] !== undefined ? phoneMap[user.id] : (user.phone || '');
               const currentPass = passMap[user.id] !== undefined ? passMap[user.id] : user.password;
               const isEmailChanged = currentEmail.trim() !== (user.email || '').trim();
+              const isPhoneChanged = currentPhone.trim() !== (user.phone || '').trim();
               const isPassChanged = currentPass.trim() !== user.password.trim();
-              const hasModifications = isEmailChanged || isPassChanged;
+              const hasModifications = isEmailChanged || isPhoneChanged || isPassChanged;
+
+              // Format clean WA link
+              const cleanWaNumber = currentPhone.replace(/\D/g, '');
+              const waLink = cleanWaNumber.length >= 9
+                ? `https://wa.me/${cleanWaNumber.startsWith('0') ? '62' + cleanWaNumber.slice(1) : cleanWaNumber}`
+                : null;
 
               return (
                 <div 
@@ -859,14 +903,14 @@ export const AdminSettings: React.FC = () => {
                     )}
                   </div>
 
-                  {/* 2 Clean Columns: EMAIL & PASSWORD */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                  {/* 3 Clean Integrated Columns: EMAIL, WHATSAPP, & PASSWORD */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
                     {/* KOLOM 1: Email Akun & Notifikasi */}
                     <div className="p-3 rounded-xl border border-slate-200 bg-white shadow-2xs space-y-1.5">
                       <div className="flex items-center justify-between">
                         <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
                           <Mail className="w-3.5 h-3.5 text-indigo-600" />
-                          <span>Email Akun & Notifikasi</span>
+                          <span>Email Akun</span>
                         </span>
                         {isEmailChanged && (
                           <span className="text-[10px] text-amber-700 font-bold bg-amber-50 px-2 py-0.5 rounded border border-amber-300 animate-pulse">
@@ -883,21 +927,63 @@ export const AdminSettings: React.FC = () => {
                             const val = e.target.value;
                             setEmailMap(prev => ({ ...prev, [user.id]: val }));
                           }}
-                          placeholder="contoh: keuangan.teluksirih@gmail.com"
+                          placeholder="contoh: bagian@teluksirih.com"
                           className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 bg-slate-50/60 hover:bg-white focus:bg-white font-mono text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 shadow-2xs transition-all"
                         />
                       </div>
-                      <span className="text-[10px] text-slate-400 block">
-                        Dapat digunakan untuk login akun & menerima notifikasi
+                      <span className="text-[10px] text-slate-400 block truncate">
+                        Login akun & terima notifikasi
                       </span>
                     </div>
 
-                    {/* KOLOM 2: Kata Sandi / Password Akun */}
+                    {/* KOLOM 2: Nomor WhatsApp / HP Terintegrasi */}
+                    <div className="p-3 rounded-xl border border-emerald-200 bg-emerald-50/20 shadow-2xs space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold text-emerald-950 uppercase tracking-wider flex items-center gap-1.5">
+                          <Phone className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Nomor HP / WhatsApp</span>
+                        </span>
+                        {isPhoneChanged ? (
+                          <span className="text-[10px] text-amber-700 font-bold bg-amber-50 px-2 py-0.5 rounded border border-amber-300 animate-pulse">
+                            ● Belum Disimpan
+                          </span>
+                        ) : waLink ? (
+                          <a
+                            href={waLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[10px] text-emerald-700 font-bold hover:underline flex items-center gap-0.5"
+                            title="Buka Chat WhatsApp"
+                          >
+                            <span>Chat WA</span>
+                            <ExternalLink className="w-2.5 h-2.5" />
+                          </a>
+                        ) : null}
+                      </div>
+
+                      <div className="relative">
+                        <input
+                          type="tel"
+                          value={currentPhone}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setPhoneMap(prev => ({ ...prev, [user.id]: val }));
+                          }}
+                          placeholder="contoh: 081234567890"
+                          className="w-full px-3 py-2 text-xs rounded-lg border border-emerald-200 bg-white font-mono text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-emerald-500 shadow-2xs font-semibold"
+                        />
+                      </div>
+                      <span className="text-[10px] text-slate-500 block truncate">
+                        Kirim notifikasi & konfirmasi PIC
+                      </span>
+                    </div>
+
+                    {/* KOLOM 3: Kata Sandi / Password Akun */}
                     <div className="p-3 rounded-xl border border-indigo-200 bg-indigo-50/30 shadow-2xs space-y-1.5">
                       <div className="flex items-center justify-between">
                         <span className="text-[10px] font-bold text-indigo-950 uppercase tracking-wider flex items-center gap-1.5">
                           <KeyRound className="w-3.5 h-3.5 text-indigo-600" />
-                          <span>Password / Kata Sandi</span>
+                          <span>Password / Sandi</span>
                         </span>
                         {isPassChanged ? (
                           <span className="text-[10px] text-amber-700 font-bold bg-amber-50 px-2 py-0.5 rounded border border-amber-300 animate-pulse">
@@ -921,10 +1007,10 @@ export const AdminSettings: React.FC = () => {
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') {
                               e.preventDefault();
-                              handleSaveAccount(user, passMap[user.id], emailMap[user.id]);
+                              handleSaveAccount(user, passMap[user.id], emailMap[user.id], phoneMap[user.id]);
                             }
                           }}
-                          placeholder="Password minimal 4 karakter"
+                          placeholder="Password min 4 char"
                           className="w-full px-3 py-2 pr-9 text-xs rounded-lg border border-indigo-200 bg-white font-mono text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 shadow-2xs font-semibold"
                         />
                         <button
@@ -936,8 +1022,8 @@ export const AdminSettings: React.FC = () => {
                           {showPassMap[user.id] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                         </button>
                       </div>
-                      <span className="text-[10px] text-slate-500 block">
-                        Ketik password baru, lalu klik tombol <strong>Simpan Perubahan</strong> di bawah.
+                      <span className="text-[10px] text-slate-500 block truncate">
+                        Ketik password baru & simpan
                       </span>
                     </div>
                   </div>
@@ -967,7 +1053,7 @@ export const AdminSettings: React.FC = () => {
 
                     <button
                       type="button"
-                      onClick={() => handleSaveAccount(user, passMap[user.id], emailMap[user.id])}
+                      onClick={() => handleSaveAccount(user, passMap[user.id], emailMap[user.id], phoneMap[user.id])}
                       disabled={isSavingMap[user.id]}
                       className={`px-4 py-2 rounded-xl text-xs font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer ${
                         hasModifications

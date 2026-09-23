@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { BookingFormData, Booking } from '../../types';
 import { calculateEndTime, formatDateIndo, formatDuration, checkRoomConflict, isEligibleForMakanSiang } from '../../utils/timeUtils';
 import { RoomAgendaCalendar, NO_ROOM_VALUE } from './RoomAgendaCalendar';
@@ -28,7 +28,18 @@ export const Step1JadwalRuangan: React.FC<Step1JadwalRuanganProps> = ({
   onChange,
   onNext
 }) => {
-  const allBookings: Booking[] = bookingStorage.getAll();
+  const [allBookings, setAllBookings] = useState<Booking[]>(() => bookingStorage.getAll());
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setAllBookings(bookingStorage.getAll());
+    };
+    // initial check
+    handleUpdate();
+    const unsub = bookingStorage.subscribe(handleUpdate);
+    return () => unsub();
+  }, []);
+
   const endTime = calculateEndTime(formData.startTime, formData.durationHours);
 
   // Check conflict for currently selected room

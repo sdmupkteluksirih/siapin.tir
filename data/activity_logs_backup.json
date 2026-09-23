@@ -1,5 +1,45 @@
 [
   {
+    "id": "log-1790147914863-5mh0b",
+    "timestamp": "2026-09-23T07:18:34.862Z",
+    "userId": "Operasi",
+    "userName": "Tester",
+    "userDepartment": "Operasi",
+    "userRole": "USER",
+    "action": "BOOKING_CREATE",
+    "details": "Pengajuan booking rapat baru oleh Tester (Operasi): TEST-ATT-01 - \"Test Attachment\" (War room lt. 3, 2026-09-23 14:00-15:00)",
+    "targetId": "TEST-ATT-01",
+    "metadata": {
+      "bookingId": "test-att-1",
+      "bookingNumber": "TEST-ATT-01",
+      "department": "Operasi",
+      "participantCount": 10,
+      "makanSiang": "Tidak",
+      "snackRingan": "Tidak Ada",
+      "snackBerat": "Tidak Ada"
+    }
+  },
+  {
+    "id": "log-1790147764979-eebi4",
+    "timestamp": "2026-09-23T07:16:04.977Z",
+    "userId": "Operasi",
+    "userName": "Tester",
+    "userDepartment": "Operasi",
+    "userRole": "USER",
+    "action": "BOOKING_CREATE",
+    "details": "Pengajuan booking rapat baru oleh Tester (Operasi): TEST-01 - \"Test Meeting\" (War room lt. 3, 2026-09-23 10:00-11:00)",
+    "targetId": "TEST-01",
+    "metadata": {
+      "bookingId": "test-123",
+      "bookingNumber": "TEST-01",
+      "department": "Operasi",
+      "participantCount": 10,
+      "makanSiang": "Tidak",
+      "snackRingan": "Tidak Ada",
+      "snackBerat": "Tidak Ada"
+    }
+  },
+  {
     "id": "log-1790146477966-1a1r4",
     "timestamp": "2026-09-23T06:54:37.966Z",
     "userId": "deri.tialis",

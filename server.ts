@@ -454,6 +454,37 @@ app.post('/api/bookings', (req, res) => {
   delete newBooking._user;
 
   const current = readBookings();
+
+  // Server-Side Auto-Interlock Conflict Validation (prevent double-booking)
+  const normLocation = (newBooking.meetingLocation || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  const isNoRoom = !normLocation || normLocation === 'tidak menggunakan ruang meeting';
+  if (!isNoRoom && newBooking.meetingDate && newBooking.startTime && newBooking.endTime) {
+    const toMin = (t: string) => {
+      const [h, m] = (t || '00:00').split(':').map(Number);
+      return (h || 0) * 60 + (m || 0);
+    };
+    const newStart = toMin(newBooking.startTime);
+    const newEnd = toMin(newBooking.endTime);
+
+    const conflict = current.find((b: any) => {
+      if (!b || b.status === 'CANCELLED' || b.id === newBooking.id) return false;
+      if (b.meetingDate !== newBooking.meetingDate) return false;
+      const bLoc = (b.meetingLocation || '').trim().toLowerCase().replace(/\s+/g, ' ');
+      if (bLoc !== normLocation) return false;
+
+      const bStart = toMin(b.startTime);
+      const bEnd = toMin(b.endTime);
+      // Overlap: start1 < end2 && end1 > start2
+      return newStart < bEnd && newEnd > bStart;
+    });
+
+    if (conflict) {
+      return res.status(409).json({
+        error: `Auto-Interlock Aktif: Ruangan "${newBooking.meetingLocation}" sudah terisi agenda "${conflict.meetingTitle}" (${conflict.startTime} - ${conflict.endTime} WIB) pada tanggal ${newBooking.meetingDate} oleh ${conflict.bookerName || conflict.department}. Jadwal bentrok, pengajuan ditolak demi keamanan reservasi.`
+      });
+    }
+  }
+
   // Put new booking at the top
   const updated = [newBooking, ...current.filter((b) => b.id !== newBooking.id)];
   writeBookings(updated);

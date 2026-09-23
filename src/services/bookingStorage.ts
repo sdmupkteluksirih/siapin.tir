@@ -880,6 +880,125 @@ export const bookingStorage = {
     return newBooking;
   },
 
+  /**
+   * Authoritative Async Booking Creation with Real-Time Server Confirmation & Auto-Interlock
+   */
+  async createAsync(formData: BookingFormData): Promise<Booking> {
+    const all = this.getAll();
+    const endTime = calculateEndTime(formData.startTime, formData.durationHours);
+    const currentUser = authStorage.getCurrentUser();
+    const actorId = currentUser?.username || currentUser?.id || formData.department || 'user';
+    const actorName = currentUser?.name || formData.bookerName || 'Pengguna';
+    const actorDept = currentUser?.department || formData.department || '-';
+    const actorRole = currentUser?.role || 'USER';
+    const nowIso = new Date().toISOString();
+
+    const newBooking: Booking = {
+      id: `b-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      bookingNumber: generateDepartmentBookingNumber(formData.department, undefined, all),
+      meetingDate: formData.meetingDate,
+      startTime: formData.startTime,
+      durationHours: formData.durationHours,
+      endTime,
+      snackRingan: formData.snackRingan,
+      snackBerat: formData.snackBerat,
+      makanSiang: formData.makanSiang,
+      bookerName: formData.bookerName.trim(),
+      department: formData.department.trim(),
+      whatsapp: formData.whatsapp.trim(),
+      email: formData.email?.trim() || undefined,
+      meetingTitle: formData.meetingTitle.trim(),
+      meetingLocation: formData.meetingLocation.trim(),
+      participantCount: Number(formData.participantCount) || 1,
+      organizationOrGuests: formData.organizationOrGuests?.trim() || undefined,
+      invitationLetter: (formData.attachments && formData.attachments.length > 0) 
+        ? formData.attachments[0] 
+        : (formData.invitationLetter || undefined),
+      attachments: (formData.attachments && formData.attachments.length > 0)
+        ? formData.attachments
+        : (formData.invitationLetter ? [formData.invitationLetter] : undefined),
+      notes: formData.notes ? formData.notes.trim() : undefined,
+      status: 'BOOKED',
+      createdAt: nowIso,
+      createdById: actorId,
+      createdByName: actorName,
+      createdByDepartment: actorDept,
+      createdByRole: actorRole,
+      lastModifiedById: actorId,
+      lastModifiedByName: actorName,
+      lastModifiedByDepartment: actorDept,
+      lastModifiedByRole: actorRole,
+      lastModifiedAt: nowIso,
+      lastAction: 'DIBUAT',
+      history: [
+        {
+          timestamp: nowIso,
+          action: 'DIBUAT',
+          userId: actorId,
+          userName: actorName,
+          userRole: actorRole,
+          userDepartment: actorDept,
+          notes: `Pengajuan booking awal ${formData.meetingLocation}`
+        }
+      ]
+    };
+
+    try {
+      const res = await fetch('/api/bookings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...newBooking,
+          _user: currentUser ? {
+            username: currentUser.username,
+            name: currentUser.name,
+            department: currentUser.department,
+            role: currentUser.role
+          } : undefined
+        })
+      });
+
+      if (res.status === 409) {
+        // Auto-Interlock Conflict detected by server!
+        const errJson = await res.json().catch(() => ({}));
+        // Immediately refresh local bookings so colliding booking is shown in UI
+        await fetchBookingsFromServer(false);
+        throw new Error(errJson.error || 'Ruangan ini sudah dipesan untuk agenda lain pada jam tersebut (Auto-Interlock Aktif).');
+      }
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || `Server error (${res.status}) saat menyimpan booking`);
+      }
+
+      const savedBooking: Booking = await res.json();
+      
+      // Update memory & local storage with server-confirmed booking
+      const curList = cachedBookings || all;
+      const updated = [savedBooking, ...curList.filter(b => b.id !== savedBooking.id)];
+      cachedBookings = updated;
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      } catch {}
+      notifySubscribers();
+
+      return savedBooking;
+    } catch (err: any) {
+      if (err.message && err.message.includes('Auto-Interlock')) {
+        throw err;
+      }
+      // If network failure, fall back to local optimistic creation
+      console.warn('[SI APIN] Offline/Network fallback booking creation:', err);
+      const updated = [newBooking, ...all.filter(b => b.id !== newBooking.id)];
+      cachedBookings = updated;
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      } catch {}
+      notifySubscribers();
+      return newBooking;
+    }
+  },
+
   updateStatus(id: string, newStatus: BookingStatus, notes?: string, approvedBy?: string): Booking | undefined {
     const all = this.getAll();
     let updatedBooking: Booking | undefined;
