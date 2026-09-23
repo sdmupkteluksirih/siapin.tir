@@ -950,30 +950,17 @@ function readUsers(): any[] {
         (p.name && p.name.toLowerCase() === seed.name.toLowerCase())
       );
       if (!existing) {
-        parsed.push(seed);
+        parsed.push({ ...seed });
         modified = true;
       } else {
-        // Enforce official credentials and contact numbers requested by user
-        if (existing.password !== seed.password) {
-          existing.password = seed.password;
-          modified = true;
-        }
-        if (existing.email !== seed.email) {
-          existing.email = seed.email;
-          modified = true;
-        }
-        if (existing.phone !== seed.phone) {
-          existing.phone = seed.phone;
-          modified = true;
-        }
-        if (existing.username !== seed.username) {
-          existing.username = seed.username;
-          modified = true;
-        }
-        if (existing.role !== seed.role) {
-          existing.role = seed.role;
-          modified = true;
-        }
+        // Ensure required fields exist without overwriting changes saved by admin
+        if (!existing.id) { existing.id = seed.id; modified = true; }
+        if (!existing.username) { existing.username = seed.username; modified = true; }
+        if (!existing.password) { existing.password = seed.password; modified = true; }
+        if (!existing.department) { existing.department = seed.department; modified = true; }
+        if (!existing.role) { existing.role = seed.role; modified = true; }
+        if (existing.phone === undefined && seed.phone) { existing.phone = seed.phone; modified = true; }
+        if (existing.email === undefined && seed.email) { existing.email = seed.email; modified = true; }
       }
     });
 

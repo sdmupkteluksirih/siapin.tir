@@ -60,7 +60,6 @@ export const AdminSettings: React.FC = () => {
   const [savedStatusMap, setSavedStatusMap] = useState<Record<string, string>>({});
   const [isSyncingAll, setIsSyncingAll] = useState(false);
   const [syncToast, setSyncToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-  const autoSaveTimeouts = useRef<Record<string, NodeJS.Timeout>>({});
 
   // WhatsApp Admin Contacts state
   const [adminContacts, setAdminContacts] = useState<AdminContact[]>(() => whatsappService.getAdminContacts());
@@ -182,20 +181,27 @@ export const AdminSettings: React.FC = () => {
     }
   };
 
-  // Auto-save or manual save account (Email + Password)
+  // Save account (Email + Password) explicitly on button click
   const handleSaveAccount = async (user: UserAccount, overridePass?: string, overrideEmail?: string) => {
-    const pKey = `pass-${user.id}`;
-    const eKey = `email-${user.id}`;
-    if (autoSaveTimeouts.current[pKey]) clearTimeout(autoSaveTimeouts.current[pKey]);
-    if (autoSaveTimeouts.current[eKey]) clearTimeout(autoSaveTimeouts.current[eKey]);
-
     const activePass = (overridePass !== undefined ? overridePass : (passMap[user.id] ?? user.password)).trim();
     const activeEmail = (overrideEmail !== undefined ? overrideEmail : (emailMap[user.id] ?? (user.email || ''))).trim();
+
+    if (activePass.length < 4) {
+      setSavedStatusMap(prev => ({ ...prev, [user.id]: 'Gagal: Password minimal 4 karakter' }));
+      setTimeout(() => {
+        setSavedStatusMap(prev => {
+          const next = { ...prev };
+          delete next[user.id];
+          return next;
+        });
+      }, 3500);
+      return;
+    }
 
     setIsSavingMap(prev => ({ ...prev, [user.id]: true }));
     try {
       const success = await authStorage.saveUserAccountAsync(user.id, {
-        password: activePass.length >= 4 ? activePass : undefined,
+        password: activePass,
         email: activeEmail
       });
 
@@ -203,10 +209,7 @@ export const AdminSettings: React.FC = () => {
 
       if (success) {
         setSavedStatusMap(prev => ({ ...prev, [user.id]: 'Tersimpan ke Server Pusat' }));
-        // Explicitly update local passMap and emailMap
-        if (activePass.length >= 4) {
-          setPassMap(prev => ({ ...prev, [user.id]: activePass }));
-        }
+        setPassMap(prev => ({ ...prev, [user.id]: activePass }));
         setEmailMap(prev => ({ ...prev, [user.id]: activeEmail }));
         
         const currentUsers = authStorage.getAllUsers();
@@ -218,9 +221,26 @@ export const AdminSettings: React.FC = () => {
             return next;
           });
         }, 3500);
+      } else {
+        setSavedStatusMap(prev => ({ ...prev, [user.id]: 'Gagal menyimpan ke server' }));
+        setTimeout(() => {
+          setSavedStatusMap(prev => {
+            const next = { ...prev };
+            delete next[user.id];
+            return next;
+          });
+        }, 3500);
       }
     } catch {
       setIsSavingMap(prev => ({ ...prev, [user.id]: false }));
+      setSavedStatusMap(prev => ({ ...prev, [user.id]: 'Terjadi kesalahan sistem' }));
+      setTimeout(() => {
+        setSavedStatusMap(prev => {
+          const next = { ...prev };
+          delete next[user.id];
+          return next;
+        });
+      }, 3500);
     }
   };
 
@@ -593,7 +613,7 @@ export const AdminSettings: React.FC = () => {
                 </span>
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">
-                Kelola email & kata sandi seluruh akun. Setiap perubahan tersimpan otomatis ke server pusat dan tersinkron ke semua admin & user.
+                Kelola email & kata sandi seluruh akun. Klik tombol <strong>Simpan Perubahan</strong> untuk menyimpan dan menyinkronkan data ke server pusat.
               </p>
             </div>
           </div>
@@ -833,8 +853,8 @@ export const AdminSettings: React.FC = () => {
                           <span>Email Akun & Notifikasi</span>
                         </span>
                         {isEmailChanged && (
-                          <span className="text-[10px] text-amber-700 font-bold bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
-                            Diubah (Auto-Save)
+                          <span className="text-[10px] text-amber-700 font-bold bg-amber-50 px-2 py-0.5 rounded border border-amber-300 animate-pulse">
+                            ● Belum Disimpan
                           </span>
                         )}
                       </div>
@@ -846,15 +866,6 @@ export const AdminSettings: React.FC = () => {
                           onChange={(e) => {
                             const val = e.target.value;
                             setEmailMap(prev => ({ ...prev, [user.id]: val }));
-                            if (autoSaveTimeouts.current[`email-${user.id}`]) {
-                              clearTimeout(autoSaveTimeouts.current[`email-${user.id}`]);
-                            }
-                            autoSaveTimeouts.current[`email-${user.id}`] = setTimeout(() => {
-                              handleSaveAccount(user, undefined, val);
-                            }, 800);
-                          }}
-                          onBlur={() => {
-                            handleSaveAccount(user, undefined, emailMap[user.id]);
                           }}
                           placeholder="contoh: keuangan.teluksirih@gmail.com"
                           className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 bg-slate-50/60 hover:bg-white focus:bg-white font-mono text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 shadow-2xs transition-all"
@@ -873,8 +884,8 @@ export const AdminSettings: React.FC = () => {
                           <span>Password / Kata Sandi</span>
                         </span>
                         {isPassChanged ? (
-                          <span className="text-[10px] text-indigo-700 font-bold bg-indigo-100 px-1.5 py-0.5 rounded border border-indigo-300">
-                            Diubah (Auto-Save)
+                          <span className="text-[10px] text-amber-700 font-bold bg-amber-50 px-2 py-0.5 rounded border border-amber-300 animate-pulse">
+                            ● Belum Disimpan
                           </span>
                         ) : (
                           <span className="text-[10px] text-slate-400 font-mono">
@@ -890,26 +901,11 @@ export const AdminSettings: React.FC = () => {
                           onChange={(e) => {
                             const val = e.target.value;
                             setPassMap(prev => ({ ...prev, [user.id]: val }));
-                            if (autoSaveTimeouts.current[`pass-${user.id}`]) {
-                              clearTimeout(autoSaveTimeouts.current[`pass-${user.id}`]);
-                            }
-                            if (val.trim().length >= 4) {
-                              autoSaveTimeouts.current[`pass-${user.id}`] = setTimeout(() => {
-                                handleSaveAccount(user, val, undefined);
-                              }, 800);
-                            }
-                          }}
-                          onBlur={() => {
-                            if ((passMap[user.id] || '').trim().length >= 4) {
-                              handleSaveAccount(user, passMap[user.id], undefined);
-                            }
                           }}
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') {
                               e.preventDefault();
-                              if ((passMap[user.id] || '').trim().length >= 4) {
-                                handleSaveAccount(user, passMap[user.id], undefined);
-                              }
+                              handleSaveAccount(user, passMap[user.id], emailMap[user.id]);
                             }
                           }}
                           placeholder="Password minimal 4 karakter"
@@ -924,25 +920,31 @@ export const AdminSettings: React.FC = () => {
                           {showPassMap[user.id] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                         </button>
                       </div>
-                      <span className="text-[10px] text-slate-400 block">
-                        Edit langsung password akun di atas (tersimpan otomatis)
+                      <span className="text-[10px] text-slate-500 block">
+                        Ketik password baru, lalu klik tombol <strong>Simpan Perubahan</strong> di bawah.
                       </span>
                     </div>
                   </div>
 
-                  {/* Row Auto-Save Status & Immediate Action */}
+                  {/* Row Save Status & Explicit Action Button */}
                   <div className="flex items-center justify-between pt-2 border-t border-slate-200/80 flex-wrap gap-2">
                     <div className="flex items-center gap-2 text-[11px] text-slate-500">
                       <span>ID Sistem: <code className="font-mono text-slate-600 bg-slate-100 px-1 py-0.5 rounded">{user.id}</code></span>
                       {isSavingMap[user.id] ? (
                         <span className="flex items-center gap-1.5 text-indigo-600 font-bold animate-pulse">
                           <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          Menyimpan otomatis ke database server...
+                          Menyimpan ke database server...
                         </span>
                       ) : savedStatusMap[user.id] ? (
-                        <span className="flex items-center gap-1 text-emerald-700 font-bold">
-                          <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                        <span className={`flex items-center gap-1 font-bold ${
+                          savedStatusMap[user.id].startsWith('Gagal') ? 'text-rose-600' : 'text-emerald-700'
+                        }`}>
+                          <CheckCircle className="w-3.5 h-3.5" />
                           {savedStatusMap[user.id]}
+                        </span>
+                      ) : hasModifications ? (
+                        <span className="text-amber-700 font-bold text-[11px]">
+                          Ada perubahan yang belum disimpan
                         </span>
                       ) : null}
                     </div>
@@ -951,12 +953,12 @@ export const AdminSettings: React.FC = () => {
                       type="button"
                       onClick={() => handleSaveAccount(user, passMap[user.id], emailMap[user.id])}
                       disabled={isSavingMap[user.id]}
-                      className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition shadow-2xs flex items-center gap-1.5 cursor-pointer ${
+                      className={`px-4 py-2 rounded-xl text-xs font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer ${
                         hasModifications
-                          ? 'bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white'
-                          : 'bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white'
+                          ? 'bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white ring-2 ring-emerald-400/50 shadow-md animate-pulse'
+                          : 'bg-slate-700 hover:bg-slate-800 active:bg-slate-900 text-white'
                       }`}
-                      title="Klik untuk langsung simpan perubahan ke database pusat"
+                      title="Klik untuk menyimpan perubahan ke database server"
                     >
                       {isSavingMap[user.id] ? (
                         <>
@@ -966,7 +968,7 @@ export const AdminSettings: React.FC = () => {
                       ) : (
                         <>
                           <Save className="w-3.5 h-3.5" />
-                          <span>{hasModifications ? 'Simpan Perubahan' : 'Simpan ke Server'}</span>
+                          <span>{hasModifications ? 'Simpan Perubahan' : 'Tersimpan'}</span>
                         </>
                       )}
                     </button>

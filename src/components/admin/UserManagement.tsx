@@ -20,7 +20,10 @@ import {
   Edit,
   Sparkles,
   RefreshCw,
-  Phone
+  Phone,
+  MessageSquare,
+  ExternalLink,
+  Check
 } from 'lucide-react';
 
 export const UserManagement: React.FC = () => {
@@ -59,6 +62,60 @@ export const UserManagement: React.FC = () => {
   // Revealed passwords state for admin review
   const [revealedPasswords, setRevealedPasswords] = useState<Record<string, boolean>>({});
   const [isSyncing, setIsSyncing] = useState(false);
+
+  // Quick WhatsApp / Phone modal state
+  const [selectedUserForPhone, setSelectedUserForPhone] = useState<UserAccount | null>(null);
+  const [phoneModalInput, setPhoneModalInput] = useState('');
+  const [copiedPhoneId, setCopiedPhoneId] = useState<string | null>(null);
+
+  const formatIndonesianPhone = (phone?: string) => {
+    if (!phone) return '-';
+    const clean = phone.replace(/[^0-9]/g, '');
+    if (clean.length === 11) {
+      return `${clean.slice(0, 4)}-${clean.slice(4, 7)}-${clean.slice(7)}`;
+    } else if (clean.length === 12) {
+      return `${clean.slice(0, 4)}-${clean.slice(4, 8)}-${clean.slice(8)}`;
+    } else if (clean.length === 13) {
+      return `${clean.slice(0, 4)}-${clean.slice(4, 8)}-${clean.slice(8)}`;
+    }
+    return phone;
+  };
+
+  const getWhatsAppUrl = (phone?: string, name?: string) => {
+    if (!phone) return '#';
+    let clean = phone.replace(/[^0-9]/g, '');
+    if (clean.startsWith('0')) {
+      clean = '62' + clean.slice(1);
+    } else if (!clean.startsWith('62')) {
+      clean = '62' + clean;
+    }
+    const text = encodeURIComponent(`Halo ${name || 'Bapak/Ibu PIC'}, ini pesan dari Pengelola Aplikasi SI APIN UPK Teluk Sirih.`);
+    return `https://wa.me/${clean}?text=${text}`;
+  };
+
+  const handleCopyPhone = (userId: string, phone: string, name: string) => {
+    navigator.clipboard.writeText(phone);
+    setCopiedPhoneId(userId);
+    showNotificationMsg(`Nomor WhatsApp PIC ${name} (${phone}) berhasil disalin.`);
+    setTimeout(() => setCopiedPhoneId(null), 2500);
+  };
+
+  const handleOpenPhoneModal = (user: UserAccount) => {
+    setSelectedUserForPhone(user);
+    setPhoneModalInput(user.phone || '');
+  };
+
+  const handleSavePhoneModal = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedUserForPhone) return;
+    const clean = phoneModalInput.trim();
+    await authStorage.updateUserAsync(selectedUserForPhone.id, {
+      phone: clean || undefined
+    });
+    setUsers(authStorage.getAllUsers());
+    showNotificationMsg(`Nomor WhatsApp untuk ${selectedUserForPhone.name} berhasil diperbarui.`);
+    setSelectedUserForPhone(null);
+  };
 
   useEffect(() => {
     const refreshData = () => {
@@ -382,13 +439,13 @@ export const UserManagement: React.FC = () => {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-bold text-white text-base">Akun Administrator Utama</span>
+                <span className="font-bold text-white text-base">Akun Administrator Utama (Admin Si Apin)</span>
                 <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-500/30 text-indigo-300 border border-indigo-400/30 uppercase">
                   MASTER ADMIN
                 </span>
               </div>
               <p className="text-xs text-slate-300 mt-0.5">
-                ID: <code className="bg-slate-800 text-indigo-300 px-1.5 py-0.5 rounded font-mono font-bold">admin</code> • Password: <code className="bg-slate-800 text-emerald-300 px-1.5 py-0.5 rounded font-mono font-bold">{users.find(u => u.username === 'admin')?.password || 'admin123'}</code>
+                ID: <code className="bg-slate-800 text-indigo-300 px-1.5 py-0.5 rounded font-mono font-bold">admin.siapin</code> • Email: <code className="bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded font-mono text-[11px]">{users.find(u => u.username === 'admin.siapin' || u.username === 'admin')?.email || 'sdm.upkteluksirih@gmail.com'}</code> • Password: <code className="bg-slate-800 text-emerald-300 px-1.5 py-0.5 rounded font-mono font-bold">{users.find(u => u.username === 'admin.siapin' || u.username === 'admin')?.password || 'Ip@2026admin'}</code>
               </p>
             </div>
           </div>
@@ -397,7 +454,7 @@ export const UserManagement: React.FC = () => {
             <button
               type="button"
               onClick={() => {
-                const adminUser = users.find(u => u.username === 'admin');
+                const adminUser = users.find(u => u.username === 'admin.siapin' || u.username === 'admin');
                 if (adminUser) handleOpenResetModal(adminUser);
               }}
               className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition-colors border border-white/20 flex items-center gap-1.5 cursor-pointer"
@@ -417,19 +474,24 @@ export const UserManagement: React.FC = () => {
             id="search-user-input"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Cari nama pengguna, username, atau divisi..."
+            placeholder="Cari nama pengguna, username, no hp, atau divisi..."
             className="w-full py-2.5 pl-10 pr-4 rounded-xl text-xs sm:text-sm font-medium border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 text-slate-800"
           />
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
         </div>
 
-        <div className="flex items-center gap-3 text-xs text-slate-600">
+        <div className="flex items-center gap-3 text-xs text-slate-600 flex-wrap">
           <span className="font-semibold">
             Total Terdaftar: <strong className="text-slate-900">{users.length} Akun</strong>
           </span>
           <span className="text-slate-300">|</span>
           <span className="text-slate-500">
             Admin: <strong>{users.filter(u => u.role === 'ADMIN').length}</strong>, Divisi/PIC: <strong>{users.filter(u => u.role === 'USER').length}</strong>
+          </span>
+          <span className="text-slate-300">|</span>
+          <span className="text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg font-bold flex items-center gap-1.5 shadow-2xs">
+            <Phone className="w-3 h-3 text-emerald-600" />
+            <span>WhatsApp Terintegrasi: <strong>{users.filter(u => !!u.phone).length}</strong>/{users.length}</span>
           </span>
         </div>
       </div>
@@ -443,6 +505,7 @@ export const UserManagement: React.FC = () => {
                 <th className="py-3.5 px-4">Pengguna</th>
                 <th className="py-3.5 px-4">User ID (Login)</th>
                 <th className="py-3.5 px-4">Departemen / Divisi</th>
+                <th className="py-3.5 px-4">Nomor HP / WhatsApp Terintegrasi</th>
                 <th className="py-3.5 px-4">Hak Akses</th>
                 <th className="py-3.5 px-4">Password Saat Ini</th>
                 <th className="py-3.5 px-4 text-right">Opsi & Reset</th>
@@ -451,7 +514,7 @@ export const UserManagement: React.FC = () => {
             <tbody className="divide-y divide-slate-100">
               {filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-10 text-center text-slate-400">
+                  <td colSpan={7} className="py-10 text-center text-slate-400">
                     Tidak ada akun yang sesuai dengan pencarian.
                   </td>
                 </tr>
@@ -477,7 +540,7 @@ export const UserManagement: React.FC = () => {
                               <span>{user.name}</span>
                               {user.id === currentUser?.id && (
                                 <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.2 rounded font-normal">
-                                  Anda
+                                   Anda
                                 </span>
                               )}
                             </div>
@@ -487,15 +550,6 @@ export const UserManagement: React.FC = () => {
                                 <>
                                   <span>&bull;</span>
                                   <span className="text-slate-500 font-mono text-[10px] bg-slate-50 px-1 rounded border border-slate-200" title="Email akun">{user.email}</span>
-                                </>
-                              )}
-                              {user.phone && (
-                                <>
-                                  <span>&bull;</span>
-                                  <span className="text-emerald-700 font-mono text-[10px] bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200 font-semibold flex items-center gap-0.5" title="Nomor HP PIC">
-                                    <Phone className="w-2.5 h-2.5" />
-                                    <span>{user.phone}</span>
-                                  </span>
                                 </>
                               )}
                             </div>
@@ -513,6 +567,75 @@ export const UserManagement: React.FC = () => {
                       {/* Department */}
                       <td className="py-3.5 px-4 whitespace-nowrap text-slate-700 font-medium text-xs">
                         {user.department}
+                      </td>
+
+                      {/* Nomor HP / WhatsApp Terintegrasi */}
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        {user.phone ? (
+                          <div className="inline-flex items-center gap-1.5 p-1.5 pr-2.5 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50/70 border border-emerald-200 shadow-2xs hover:border-emerald-300 transition-all">
+                            {/* Icon & Phone Number */}
+                            <div className="flex items-center gap-1.5 pl-1">
+                              <div className="w-6 h-6 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                                <Phone className="w-3 h-3" />
+                              </div>
+                              <span className="font-mono text-xs font-bold text-emerald-950 tracking-tight">
+                                {formatIndonesianPhone(user.phone)}
+                              </span>
+                            </div>
+
+                            {/* Copy Phone Button */}
+                            <button
+                              type="button"
+                              onClick={() => handleCopyPhone(user.id, user.phone!, user.name)}
+                              className="p-1 rounded-md text-emerald-700 hover:text-emerald-950 hover:bg-emerald-100/80 transition-colors cursor-pointer"
+                              title="Salin Nomor WhatsApp"
+                            >
+                              {copiedPhoneId === user.id ? (
+                                <Check className="w-3.5 h-3.5 text-emerald-600" />
+                              ) : (
+                                <Copy className="w-3.5 h-3.5" />
+                              )}
+                            </button>
+
+                            {/* Direct WhatsApp Action */}
+                            <a
+                              href={getWhatsAppUrl(user.phone, user.name)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-[11px] font-bold shadow-2xs hover:shadow-xs transition-all cursor-pointer shrink-0 ml-0.5"
+                              title={`Buka obrolan WhatsApp dengan ${user.name}`}
+                            >
+                              <MessageSquare className="w-3 h-3" />
+                              <span>Chat WA</span>
+                              <ExternalLink className="w-2.5 h-2.5 opacity-75" />
+                            </a>
+
+                            {/* Quick Edit Phone Button */}
+                            <button
+                              type="button"
+                              onClick={() => handleOpenPhoneModal(user)}
+                              className="p-1 rounded-md text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer"
+                              title="Ubah nomor WhatsApp ini"
+                            >
+                              <Edit className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="inline-flex items-center gap-2">
+                            <span className="text-[11px] text-slate-400 font-mono italic bg-slate-100 px-2 py-1 rounded-lg">
+                              Belum ada No HP
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenPhoneModal(user)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-dashed border-emerald-300 bg-emerald-50/50 hover:bg-emerald-50 text-emerald-700 text-[11px] font-bold hover:border-emerald-400 transition-colors cursor-pointer"
+                              title="Hubungkan nomor WhatsApp untuk akun ini"
+                            >
+                              <Plus className="w-3 h-3" />
+                              <span>Tambah WA</span>
+                            </button>
+                          </div>
+                        )}
                       </td>
 
                       {/* Role */}
@@ -936,16 +1059,33 @@ export const UserManagement: React.FC = () => {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700 block uppercase tracking-wider">
-                    Nomor HP / WhatsApp
-                  </label>
-                  <input
-                    type="tel"
-                    value={editPhone}
-                    onChange={(e) => setEditPhone(e.target.value)}
-                    placeholder="misal: 081275082259"
-                    className="w-full py-2.5 px-3 rounded-xl border border-slate-200 text-xs sm:text-sm font-medium bg-slate-50/50 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
-                  />
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-700 block uppercase tracking-wider flex items-center gap-1.5">
+                      <Phone className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Nomor HP / WA</span>
+                    </label>
+                    {editPhone && (
+                      <a
+                        href={getWhatsAppUrl(editPhone, editFullName)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[10px] text-emerald-700 hover:text-emerald-800 font-bold flex items-center gap-0.5"
+                      >
+                        <MessageSquare className="w-2.5 h-2.5" />
+                        <span>Tes Link WA</span>
+                      </a>
+                    )}
+                  </div>
+                  <div className="relative">
+                    <input
+                      type="tel"
+                      value={editPhone}
+                      onChange={(e) => setEditPhone(e.target.value)}
+                      placeholder="misal: 081275082259"
+                      className="w-full py-2.5 pl-8 pr-3 rounded-xl border border-emerald-200 text-xs sm:text-sm font-mono font-bold bg-emerald-50/20 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                    />
+                    <Phone className="w-3.5 h-3.5 text-emerald-600 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                  </div>
                 </div>
               </div>
 
@@ -1068,6 +1208,89 @@ export const UserManagement: React.FC = () => {
                   className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-xs cursor-pointer"
                 >
                   Simpan Perubahan
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Quick WhatsApp / Phone Modal */}
+      {selectedUserForPhone && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 backdrop-blur-xs p-4 overflow-y-auto animate-in fade-in">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-slate-200 relative">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
+                <Phone className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base sm:text-lg font-black text-slate-900">
+                  Integrasi Nomor HP / WhatsApp
+                </h3>
+                <p className="text-xs text-slate-500">
+                  PIC: <strong className="text-emerald-700">{selectedUserForPhone.name}</strong> ({selectedUserForPhone.username})
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleSavePhoneModal} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700 block uppercase tracking-wider">
+                  Nomor HP / WhatsApp Aktif
+                </label>
+                <div className="relative">
+                  <input
+                    type="tel"
+                    value={phoneModalInput}
+                    onChange={(e) => setPhoneModalInput(e.target.value)}
+                    placeholder="Contoh: 081275082259"
+                    autoFocus
+                    className="w-full py-2.5 pl-10 pr-3 rounded-xl border border-emerald-300 text-xs sm:text-sm font-mono font-bold bg-emerald-50/20 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500 text-slate-900"
+                  />
+                  <Phone className="w-4 h-4 text-emerald-600 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                </div>
+                <p className="text-[11px] text-slate-500">
+                  Gunakan format nomor lokal (contoh: <code>081275082259</code>). Nomor ini otomatis terhubung dengan tombol <strong>Chat WA</strong> & pelacakan pesanan konsumsi.
+                </p>
+              </div>
+
+              {phoneModalInput.trim() && (
+                <div className="p-3 rounded-xl bg-emerald-50/90 border border-emerald-200 text-xs text-emerald-900 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <MessageSquare className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <div>
+                      <div className="font-bold text-[11px]">Tautan Direct WhatsApp Terintegrasi:</div>
+                      <code className="text-[11px] font-mono font-semibold">
+                        wa.me/{phoneModalInput.replace(/[^0-9]/g, '').replace(/^0/, '62')}
+                      </code>
+                    </div>
+                  </div>
+                  <a
+                    href={getWhatsAppUrl(phoneModalInput, selectedUserForPhone.name)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-2.5 py-1 rounded-lg bg-emerald-600 text-white font-bold text-[10px] hover:bg-emerald-700 flex items-center gap-1 shrink-0"
+                  >
+                    <span>Coba Tes</span>
+                    <ExternalLink className="w-2.5 h-2.5" />
+                  </a>
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setSelectedUserForPhone(null)}
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  <span>Simpan Nomor WA</span>
                 </button>
               </div>
             </form>

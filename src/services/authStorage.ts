@@ -202,7 +202,7 @@ const authBroadcast = typeof window !== 'undefined' && 'BroadcastChannel' in win
   ? new BroadcastChannel('siapin_auth_sync_channel')
   : null;
 
-// Reconciles any user list with the official 14 accounts so that passwords, emails, and phones are always 100% up-to-date
+// Ensures all default accounts exist without overwriting changes saved by admin
 function reconcileWithDefaults(users: UserAccount[]): UserAccount[] {
   const result = [...users];
 
@@ -219,14 +219,15 @@ function reconcileWithDefaults(users: UserAccount[]): UserAccount[] {
       const existing = result[idx];
       result[idx] = {
         ...existing,
-        name: def.name,
-        username: def.username,
-        role: def.role,
-        department: def.department,
-        email: def.email,
-        phone: def.phone,
-        password: def.password,
-        avatarText: def.avatarText || existing.avatarText
+        id: existing.id || def.id,
+        name: existing.name || def.name,
+        username: existing.username || def.username,
+        role: existing.role || def.role,
+        department: existing.department || def.department,
+        email: existing.email !== undefined ? existing.email : def.email,
+        phone: existing.phone !== undefined ? existing.phone : def.phone,
+        password: (existing.password && existing.password.trim().length >= 4) ? existing.password : def.password,
+        avatarText: existing.avatarText || def.avatarText
       };
     }
   });

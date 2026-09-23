@@ -46,15 +46,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
 
   const handleSelectAccount = (accUsername: string) => {
     setUsername(accUsername);
-    const targetUser = authStorage.getAllUsers().find(
-      u => u.username.toLowerCase() === accUsername.toLowerCase()
-    );
-    if (targetUser?.password) {
-      setPassword(targetUser.password);
-    }
+    setPassword('');
+    setShowPassword(false);
     setCopiedAccount(accUsername);
     setErrorMsg('');
     setTimeout(() => setCopiedAccount(null), 2500);
+    const passInput = document.getElementById('login-password-input');
+    if (passInput) passInput.focus();
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -312,7 +310,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
               {showAccountGuide && (
                 <div className="mt-3 p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3.5 animate-in fade-in">
                   <div className="text-[11px] text-slate-500 bg-amber-50 p-2.5 rounded-xl border border-amber-200 text-amber-900 leading-relaxed">
-                    💡 <strong>Tips Masuk:</strong> Klik salah satu akun di bawah untuk otomatis mengisi User ID ke formulir. Jika kata sandi telah diubah oleh Admin, gunakan sandi baru yang ditentukan.
+                    💡 <strong>Tips Masuk:</strong> Klik salah satu akun di bawah untuk otomatis mengisi User ID ke formulir. Masukkan kata sandi akun Anda secara manual.
                   </div>
 
                   {/* Section Admin */}
