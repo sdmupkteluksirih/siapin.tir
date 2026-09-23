@@ -2,7 +2,7 @@ import { UserAccount } from '../types';
 import { activityLogger } from './activityLogger';
 import { sseClient } from './sseClient';
 
-const USERS_STORAGE_KEY = 'meeting_app_users_v1';
+const USERS_STORAGE_KEY = 'meeting_app_users_v2';
 const CURRENT_USER_KEY = 'meeting_app_current_user_v1';
 const AUTH_LISTEN_EVENT = 'meeting_app_auth_changed';
 
@@ -175,8 +175,8 @@ export const DEFAULT_USERS: UserAccount[] = [
     name: 'Pengadaan',
     role: 'USER',
     department: 'Pengadaan',
-    email: 'windatakawaii@gmail.com',
-    phone: '081276813858',
+    email: 'rhyannurhidayat@gmail.com',
+    phone: '081261907718',
     password: 'Ip@2026dan',
     avatarText: 'PG',
     lastLogin: '2026-08-19T15:10:00.000Z',
@@ -188,8 +188,8 @@ export const DEFAULT_USERS: UserAccount[] = [
     name: 'Sistem Manajemen Terintegrasi',
     role: 'USER',
     department: 'Sistem Manajemen Terintegrasi',
-    email: 'lolalorenza947@gmail.com',
-    phone: '082286684003',
+    email: 'upkteluksirih.smt@gmail.com',
+    phone: '082284705574',
     password: 'Ip@2026smt!',
     avatarText: 'SM',
     lastLogin: '2026-08-20T09:00:00.000Z',
@@ -202,18 +202,62 @@ const authBroadcast = typeof window !== 'undefined' && 'BroadcastChannel' in win
   ? new BroadcastChannel('siapin_auth_sync_channel')
   : null;
 
+// Reconciles any user list with the official 14 accounts so that passwords, emails, and phones are always 100% up-to-date
+function reconcileWithDefaults(users: UserAccount[]): UserAccount[] {
+  const result = [...users];
+
+  DEFAULT_USERS.forEach(def => {
+    const idx = result.findIndex(u => 
+      u.id === def.id || 
+      (u.username && u.username.toLowerCase() === def.username.toLowerCase()) ||
+      (u.name && u.name.toLowerCase() === def.name.toLowerCase())
+    );
+
+    if (idx === -1) {
+      result.push({ ...def });
+    } else {
+      const existing = result[idx];
+      result[idx] = {
+        ...existing,
+        name: def.name,
+        username: def.username,
+        role: def.role,
+        department: def.department,
+        email: def.email,
+        phone: def.phone,
+        password: def.password,
+        avatarText: def.avatarText || existing.avatarText
+      };
+    }
+  });
+
+  return result;
+}
+
 function getLocalStoredUsers(): UserAccount[] {
   if (typeof window === 'undefined') return DEFAULT_USERS;
   try {
+    // If old v1 cache exists, clean it up
+    try {
+      localStorage.removeItem('meeting_app_users_v1');
+    } catch {}
+
     const stored = localStorage.getItem(USERS_STORAGE_KEY);
     if (stored) {
       const parsed = JSON.parse(stored);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+        const reconciled = reconcileWithDefaults(parsed);
+        localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(reconciled));
+        return reconciled;
       }
     }
   } catch {}
-  return DEFAULT_USERS;
+
+  const initial = reconcileWithDefaults(DEFAULT_USERS);
+  try {
+    localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(initial));
+  } catch {}
+  return initial;
 }
 
 let cachedUsers: UserAccount[] | null = typeof window !== 'undefined' ? getLocalStoredUsers() : null;
@@ -236,9 +280,10 @@ function notifyAuthSubscribers() {
 
 function applyServerUsersUpdate(newUsers: UserAccount[]) {
   if (!Array.isArray(newUsers) || newUsers.length === 0) return;
-  cachedUsers = newUsers;
+  const reconciled = reconcileWithDefaults(newUsers);
+  cachedUsers = reconciled;
   try {
-    localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(newUsers));
+    localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(reconciled));
   } catch {}
 
   // Check if current active session user has updated password/data
@@ -248,22 +293,14 @@ function applyServerUsersUpdate(newUsers: UserAccount[]) {
       if (storedCurr) {
         const curr = JSON.parse(storedCurr);
         if (curr && (curr.id || curr.username)) {
-          const match = newUsers.find(u => 
+          const match = reconciled.find(u => 
             (curr.id && u.id === curr.id) || 
             (curr.username && u.username && u.username.toLowerCase() === curr.username.toLowerCase())
           );
           if (match) {
-            const hasChanged = 
-              match.password !== curr.password || 
-              match.name !== curr.name || 
-              match.role !== curr.role || 
-              match.department !== curr.department ||
-              match.email !== curr.email;
-            if (hasChanged) {
-              const updatedCurr = { ...curr, ...match };
-              localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(updatedCurr));
-              console.log('[AuthStorage] Active user session updated in real-time');
-            }
+            const updatedCurr = { ...curr, ...match };
+            localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(updatedCurr));
+            console.log('[AuthStorage] Active user session updated in real-time');
           }
         }
       }
@@ -351,73 +388,27 @@ export const authStorage = {
   getAllUsers(): UserAccount[] {
     if (typeof window === 'undefined') return DEFAULT_USERS;
     if (cachedUsers && Array.isArray(cachedUsers)) {
-      return cachedUsers;
+      return reconcileWithDefaults(cachedUsers);
     }
 
     const stored = localStorage.getItem(USERS_STORAGE_KEY);
     if (!stored) {
-      localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(DEFAULT_USERS));
-      cachedUsers = DEFAULT_USERS;
-      return DEFAULT_USERS;
+      const initial = reconcileWithDefaults(DEFAULT_USERS);
+      localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(initial));
+      cachedUsers = initial;
+      return initial;
     }
     try {
       const parsed: UserAccount[] = JSON.parse(stored);
-      // Ensure all DEFAULT_USERS exist in parsed list and synchronize updated default names, phones, emails
-      let needsSave = false;
-      const combined = parsed.map(u => {
-        const def = DEFAULT_USERS.find(d => 
-          d.id === u.id || 
-          d.username.toLowerCase() === u.username.toLowerCase() ||
-          (d.name && d.name.toLowerCase() === u.name?.toLowerCase())
-        );
-        if (def) {
-          let itemUpdated = false;
-          const res = { ...u };
-          if (u.name !== def.name) {
-            res.name = def.name;
-            res.department = def.department;
-            itemUpdated = true;
-          }
-          if (def.phone && (!u.phone || u.phone !== def.phone)) {
-            res.phone = def.phone;
-            itemUpdated = true;
-          }
-          if (def.email && (!u.email || u.email.includes('.co.id') || u.email.includes('@pln.co.id') || u.email !== def.email)) {
-            res.email = def.email;
-            itemUpdated = true;
-          }
-          if (def.username && u.username !== def.username) {
-            res.username = def.username;
-            itemUpdated = true;
-          }
-          if (itemUpdated) {
-            needsSave = true;
-            return res;
-          }
-        }
-        return u;
-      });
-
-      DEFAULT_USERS.forEach(def => {
-        const found = combined.some(u => 
-          u.id === def.id || 
-          u.username.toLowerCase() === def.username.toLowerCase() ||
-          (u.name && u.name.toLowerCase() === def.name.toLowerCase())
-        );
-        if (!found) {
-          combined.push(def);
-          needsSave = true;
-        }
-      });
-      if (needsSave) {
-        localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(combined));
-      }
-      cachedUsers = combined;
-      return combined;
+      const reconciled = reconcileWithDefaults(Array.isArray(parsed) ? parsed : DEFAULT_USERS);
+      localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(reconciled));
+      cachedUsers = reconciled;
+      return reconciled;
     } catch {
-      localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(DEFAULT_USERS));
-      cachedUsers = DEFAULT_USERS;
-      return DEFAULT_USERS;
+      const initial = reconcileWithDefaults(DEFAULT_USERS);
+      localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(initial));
+      cachedUsers = initial;
+      return initial;
     }
   },
 
@@ -1107,10 +1098,11 @@ export const authStorage = {
   },
 
   resetToDefault(): void {
-    cachedUsers = DEFAULT_USERS;
-    localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(DEFAULT_USERS));
+    const fresh = reconcileWithDefaults(DEFAULT_USERS);
+    cachedUsers = fresh;
+    localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(fresh));
     notifyAuthSubscribers();
-    syncUsersToServer(DEFAULT_USERS);
+    syncUsersToServer(fresh);
   },
 
   subscribe(callback: () => void) {

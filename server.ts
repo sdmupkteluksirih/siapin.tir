@@ -910,8 +910,8 @@ const SEED_USERS = [
     name: 'Pengadaan',
     role: 'USER',
     department: 'Pengadaan',
-    email: 'windatakawaii@gmail.com',
-    phone: '081276813858',
+    email: 'rhyannurhidayat@gmail.com',
+    phone: '081261907718',
     password: 'Ip@2026dan',
     avatarText: 'PG',
     lastLogin: '2026-08-19T15:10:00.000Z',
@@ -923,8 +923,8 @@ const SEED_USERS = [
     name: 'Sistem Manajemen Terintegrasi',
     role: 'USER',
     department: 'Sistem Manajemen Terintegrasi',
-    email: 'lolalorenza947@gmail.com',
-    phone: '082286684003',
+    email: 'upkteluksirih.smt@gmail.com',
+    phone: '082284705574',
     password: 'Ip@2026smt!',
     avatarText: 'SM',
     lastLogin: '2026-08-20T09:00:00.000Z',
@@ -953,17 +953,25 @@ function readUsers(): any[] {
         parsed.push(seed);
         modified = true;
       } else {
-        // Backfill and update email & phone if missing or default
-        if (!existing.phone && seed.phone) {
-          existing.phone = seed.phone;
+        // Enforce official credentials and contact numbers requested by user
+        if (existing.password !== seed.password) {
+          existing.password = seed.password;
           modified = true;
         }
-        if (seed.email && (!existing.email || existing.email.includes('.co.id') || existing.email.includes('@pln.co.id'))) {
+        if (existing.email !== seed.email) {
           existing.email = seed.email;
           modified = true;
         }
-        if (!existing.username) {
+        if (existing.phone !== seed.phone) {
+          existing.phone = seed.phone;
+          modified = true;
+        }
+        if (existing.username !== seed.username) {
           existing.username = seed.username;
+          modified = true;
+        }
+        if (existing.role !== seed.role) {
+          existing.role = seed.role;
           modified = true;
         }
       }
@@ -971,6 +979,7 @@ function readUsers(): any[] {
 
     if (modified) {
       fs.writeFileSync(USERS_FILE, JSON.stringify(parsed, null, 2), 'utf-8');
+      syncMasterBankData('users_enforced');
     }
     return parsed;
   } catch {

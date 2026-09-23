@@ -46,11 +46,15 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
 
   const handleSelectAccount = (accUsername: string) => {
     setUsername(accUsername);
+    const targetUser = authStorage.getAllUsers().find(
+      u => u.username.toLowerCase() === accUsername.toLowerCase()
+    );
+    if (targetUser?.password) {
+      setPassword(targetUser.password);
+    }
     setCopiedAccount(accUsername);
     setErrorMsg('');
     setTimeout(() => setCopiedAccount(null), 2500);
-    const passInput = document.getElementById('login-password-input');
-    if (passInput) passInput.focus();
   };
 
   const handleLogin = async (e: React.FormEvent) => {
