@@ -1,5 +1,49 @@
 [
   {
+    "id": "log-1790146477966-1a1r4",
+    "timestamp": "2026-09-23T06:54:37.966Z",
+    "userId": "deri.tialis",
+    "userName": "Deri Tialis Peristiawan",
+    "userDepartment": "Sistem Informasi & TI",
+    "userRole": "ADMIN",
+    "action": "LOGIN",
+    "details": "User Deri Tialis Peristiawan (Sistem Informasi & TI) berhasil login ke sistem",
+    "targetId": "deri.tialis"
+  },
+  {
+    "id": "log-1790137797298-f6cj5",
+    "timestamp": "2026-09-23T04:29:57.298Z",
+    "userId": "deri.tialis",
+    "userName": "Deri Tialis Peristiawan",
+    "userDepartment": "Sistem Informasi & TI",
+    "userRole": "ADMIN",
+    "action": "LOGIN",
+    "details": "User Deri Tialis Peristiawan (Sistem Informasi & TI) berhasil login ke sistem",
+    "targetId": "deri.tialis"
+  },
+  {
+    "id": "log-1790136684847-iiuq9",
+    "timestamp": "2026-09-23T04:11:24.846Z",
+    "userId": "admin.siapin",
+    "userName": "Admin Si Apin",
+    "userDepartment": "Administrasi & SDM",
+    "userRole": "ADMIN",
+    "action": "USER_UPDATE",
+    "details": "Admin Si Apin (admin.siapin) memperbarui data akun: Enjiniring (enj.tir) [Role: USER]",
+    "targetId": "usr-enj"
+  },
+  {
+    "id": "log-1790136649817-qevo3",
+    "timestamp": "2026-09-23T04:10:49.815Z",
+    "userId": "admin.siapin",
+    "userName": "Admin Si Apin",
+    "userDepartment": "Administrasi & SDM",
+    "userRole": "ADMIN",
+    "action": "USER_UPDATE",
+    "details": "Admin Si Apin (admin.siapin) memperbarui data akun: Enjiniring (enj.tir) [Role: USER]",
+    "targetId": "usr-enj"
+  },
+  {
     "id": "log-1789546244983-3jtmn",
     "timestamp": "2026-09-16T08:10:44.983Z",
     "userId": "deri",

@@ -34,7 +34,7 @@ export const DEFAULT_USERS: UserAccount[] = [
     department: 'Sistem Informasi & TI',
     email: 'deri.tialis@plnindonesiapower.co.id',
     phone: '081275082259',
-    password: 'Ip@2026dtp!',
+    password: 'Ip@2026dtp',
     avatarText: 'DP',
     lastLogin: '2026-08-20T08:00:00.000Z',
     createdAt: '2026-01-01T00:00:00.000Z'
@@ -879,8 +879,56 @@ export const authStorage = {
     return false;
   },
 
-  async forceSyncFromServer(): Promise<UserAccount[]> {
+  async syncAllWithServer(modifiedAccounts?: Array<{ id: string; password?: string; email?: string; phone?: string; name?: string; role?: 'ADMIN' | 'USER' }>): Promise<UserAccount[]> {
+    if (typeof window === 'undefined') return DEFAULT_USERS;
+
+    // 1. If explicit modified accounts were provided, merge into current list first
+    if (Array.isArray(modifiedAccounts) && modifiedAccounts.length > 0) {
+      let currentUsers = this.getAllUsers();
+      currentUsers = currentUsers.map(u => {
+        const mod = modifiedAccounts.find(m => m.id === u.id || (u.username && u.username.toLowerCase() === m.id.toLowerCase()));
+        if (!mod) return u;
+        return {
+          ...u,
+          ...(mod.password && mod.password.trim().length >= 4 ? { password: mod.password.trim() } : {}),
+          ...(mod.email !== undefined ? { email: mod.email.trim() || undefined } : {}),
+          ...(mod.phone !== undefined ? { phone: mod.phone.trim() || undefined } : {}),
+          ...(mod.name ? { name: mod.name.trim() } : {}),
+          ...(mod.role ? { role: mod.role } : {})
+        };
+      });
+      cachedUsers = currentUsers;
+      try {
+        localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(currentUsers));
+      } catch {}
+    }
+
+    const localUsers = this.getAllUsers();
+
+    // 2. Authoritative sync with server (/api/users/sync pushes current state and receives canonical merged state)
+    try {
+      const res = await fetch('/api/users/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ users: localUsers })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.users && Array.isArray(data.users) && data.users.length > 0) {
+          applyServerUsersUpdate(data.users);
+          return data.users;
+        }
+      }
+    } catch (err) {
+      console.warn('Sync POST error, falling back to GET:', err);
+    }
+
+    // 3. Fallback to fetch from server
     return await fetchUsersFromServer();
+  },
+
+  async forceSyncFromServer(): Promise<UserAccount[]> {
+    return await this.syncAllWithServer();
   },
 
   async saveUserAccountAsync(userId: string, data: { email?: string; phone?: string; password?: string; name?: string; role?: 'ADMIN' | 'USER' }): Promise<boolean> {

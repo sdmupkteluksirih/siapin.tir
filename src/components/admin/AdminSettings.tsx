@@ -146,11 +146,27 @@ export const AdminSettings: React.FC = () => {
     setShowPassMap(prev => ({ ...prev, [userId]: !prev[userId] }));
   };
 
-  // Force sync from server database
+  // Force bidirectional sync with server database (saves any pending edits and refreshes all)
   const handleSyncAllAccounts = async () => {
     setIsSyncingAll(true);
     try {
-      const refreshed = await authStorage.forceSyncFromServer();
+      // Gather any modified accounts from local inputs (passMap / emailMap)
+      const modifications: Array<{ id: string; password?: string; email?: string }> = [];
+      allUsers.forEach(u => {
+        const p = passMap[u.id];
+        const e = emailMap[u.id];
+        const hasNewPass = p !== undefined && p.trim().length >= 4 && p.trim() !== u.password;
+        const hasNewEmail = e !== undefined && e.trim() !== (u.email || '');
+        if (hasNewPass || hasNewEmail) {
+          modifications.push({
+            id: u.id,
+            password: hasNewPass ? p.trim() : undefined,
+            email: hasNewEmail ? e.trim() : undefined
+          });
+        }
+      });
+
+      const refreshed = await authStorage.syncAllWithServer(modifications);
       setAllUsers(refreshed);
       setPassMap(prev => {
         const next = { ...prev };
@@ -167,7 +183,7 @@ export const AdminSettings: React.FC = () => {
         return next;
       });
       setSyncToast({
-        message: 'Seluruh 14 akun berhasil disinkronkan langsung dengan server pusat!',
+        message: 'Seluruh akun berhasil disinkronkan & diperbarui langsung ke server pusat!',
         type: 'success'
       });
     } catch {

@@ -769,7 +769,7 @@ const SEED_USERS = [
     department: 'Sistem Informasi & TI',
     email: 'deri.tialis@plnindonesiapower.co.id',
     phone: '081275082259',
-    password: 'Ip@2026dtp!',
+    password: 'Ip@2026dtp',
     avatarText: 'DP',
     lastLogin: '2026-08-20T08:00:00.000Z',
     createdAt: '2026-01-01T00:00:00.000Z'
