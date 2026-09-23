@@ -749,169 +749,183 @@ app.post('/api/bookings/sync', (req, res) => {
 // ==========================================
 const SEED_USERS = [
   {
-    id: 'usr-admin-nofi',
-    username: 'nofi',
-    name: 'NOFI ZAHARA',
+    id: 'usr-admin-siapin',
+    username: 'admin.siapin',
+    name: 'Admin Si Apin',
     role: 'ADMIN',
-    department: 'Keuangan & Umum (Admin User 1)',
-    email: 'nofi.zahara@pln.co.id',
-    password: 'admin123',
-    avatarText: 'NZ',
-    lastLogin: '2026-08-20T08:00:00.000Z',
-    createdAt: '2026-01-01T00:00:00.000Z'
-  },
-  {
-    id: 'usr-admin-resna',
-    username: 'resna',
-    name: 'RESNA WATI',
-    role: 'ADMIN',
-    department: 'Keuangan & Umum (Admin User 2)',
-    email: 'resna.wati@pln.co.id',
-    password: 'admin123',
-    avatarText: 'RW',
+    department: 'Administrasi & SDM',
+    email: 'sdm.upkteluksirih@gmail.com',
+    phone: '',
+    password: 'Ip@2026admin',
+    avatarText: 'AD',
     lastLogin: '2026-08-20T08:00:00.000Z',
     createdAt: '2026-01-01T00:00:00.000Z'
   },
   {
     id: 'usr-admin-deri',
-    username: 'deri',
-    name: 'DERI TIALIS PERISTIAWAN',
+    username: 'deri.tialis',
+    name: 'Deri Tialis Peristiawan',
     role: 'ADMIN',
-    department: 'Sistem Informasi & TI (Admin Aplikasi 1)',
-    email: 'deri.tialis@pln.co.id',
-    password: 'PLNip@2026',
+    department: 'Sistem Informasi & TI',
+    email: 'deri.tialis@plnindonesiapower.co.id',
+    phone: '081275082259',
+    password: 'Ip@2026dtp!',
     avatarText: 'DP',
     lastLogin: '2026-08-20T08:00:00.000Z',
     createdAt: '2026-01-01T00:00:00.000Z'
   },
   {
     id: 'usr-admin-yuda',
-    username: 'yuda',
-    name: 'YUDA PUTRA UTAMA',
+    username: 'yuda.putra',
+    name: 'Yuda Putra Utama',
     role: 'ADMIN',
-    department: 'Sistem Informasi & TI (Admin Aplikasi 2)',
-    email: 'yuda.putra@pln.co.id',
-    password: 'admin123',
+    department: 'Sistem Informasi & TI',
+    email: 'yuda.utama@plnindonesiapower.co.id',
+    phone: '08126155893',
+    password: 'Ip@2026ydp',
     avatarText: 'YP',
     lastLogin: '2026-08-20T08:00:00.000Z',
     createdAt: '2026-01-01T00:00:00.000Z'
   },
   {
-    id: 'usr-admin',
-    username: 'admin',
-    name: 'Administrator Si APIN (Master)',
+    id: 'usr-admin-nofi',
+    username: 'nofi.zahara',
+    name: 'Nofi Zahara',
     role: 'ADMIN',
     department: 'Keuangan & Umum',
-    email: 'sdm.upkteluksirih@gmail.com',
-    password: 'admin123',
-    avatarText: 'AD',
+    email: 'nofi.zahara@plnindonesiapower.co.id',
+    phone: '081220207285',
+    password: 'Ip@2026nofi!',
+    avatarText: 'NZ',
     lastLogin: '2026-08-20T08:00:00.000Z',
     createdAt: '2026-01-01T00:00:00.000Z'
   },
   {
-    id: 'usr-ops',
-    username: 'operasi',
-    name: 'PIC Operasi',
-    role: 'USER',
-    department: 'Operasi',
-    email: 'operasi.teluksirih@gmail.com',
-    password: 'user123',
-    avatarText: 'OP',
-    lastLogin: '2026-08-19T09:15:00.000Z',
+    id: 'usr-admin-resna',
+    username: 'resna.wati',
+    name: 'Resna Wati',
+    role: 'ADMIN',
+    department: 'Keuangan & Umum',
+    email: 'deri.tialis@plnindonesiapower.co.id',
+    phone: '082391078016',
+    password: 'Ip@2026resna',
+    avatarText: 'RW',
+    lastLogin: '2026-08-20T08:00:00.000Z',
     createdAt: '2026-01-01T00:00:00.000Z'
   },
   {
     id: 'usr-har',
-    username: 'pemeliharaan',
-    name: 'PIC Pemeliharaan',
+    username: 'har.tir',
+    name: 'Pemeliharaan',
     role: 'USER',
     department: 'Pemeliharaan',
-    email: 'pemeliharaan.teluksirih@gmail.com',
-    password: 'user123',
+    email: 'dheaprisha@gmail.com',
+    phone: '085282533061',
+    password: 'Ip@2026har!',
     avatarText: 'PH',
     lastLogin: '2026-08-19T11:20:00.000Z',
     createdAt: '2026-01-01T00:00:00.000Z'
   },
   {
+    id: 'usr-ops',
+    username: 'opr.tir',
+    name: 'Operasi',
+    role: 'USER',
+    department: 'Operasi',
+    email: 'pujaseptya70@gmail.com',
+    phone: '082289221662',
+    password: 'Ip@2026opr',
+    avatarText: 'OP',
+    lastLogin: '2026-08-19T09:15:00.000Z',
+    createdAt: '2026-01-01T00:00:00.000Z'
+  },
+  {
+    id: 'usr-ku',
+    username: 'keu.mum',
+    name: 'Keuangan & Umum',
+    role: 'USER',
+    department: 'Keuangan & Umum',
+    email: 'krismonaandria@gmail.com',
+    phone: '083182271472',
+    password: 'Ip@2026ksa!',
+    avatarText: 'KU',
+    lastLogin: '2026-08-19T13:45:00.000Z',
+    createdAt: '2026-01-01T00:00:00.000Z'
+  },
+  {
     id: 'usr-enj',
-    username: 'enjiniring',
-    name: 'PIC Enjiniring',
+    username: 'enj.tir',
+    name: 'Enjiniring',
     role: 'USER',
     department: 'Enjiniring',
-    email: 'enjiniring.teluksirih@gmail.com',
-    password: 'user123',
+    email: 'melatianggraini1507@gmail.com',
+    phone: '081261739299',
+    password: 'Ip@2026enj',
     avatarText: 'EN',
     lastLogin: '2026-08-18T14:30:00.000Z',
     createdAt: '2026-01-01T00:00:00.000Z'
   },
   {
     id: 'usr-cah',
-    username: 'coal_ash',
-    name: 'PIC Coal & Ash Handling',
+    username: 'cah.tir',
+    name: 'Coal & Ash Handling',
     role: 'USER',
     department: 'Coal & Ash Handling',
-    email: 'coalash.teluksirih@gmail.com',
-    password: 'user123',
+    email: 'ririnpermatasari85@gmail.com',
+    phone: '082288119262',
+    password: 'Ip@2026cah!',
     avatarText: 'CA',
     lastLogin: '2026-08-17T10:00:00.000Z',
     createdAt: '2026-01-01T00:00:00.000Z'
   },
   {
-    id: 'usr-ku',
-    username: 'keuangan',
-    name: 'PIC Keuangan & Umum',
-    role: 'USER',
-    department: 'Keuangan & Umum',
-    email: 'keuangan.teluksirih@gmail.com',
-    password: 'PLNip@KU2026',
-    avatarText: 'KU',
-    lastLogin: '2026-08-19T13:45:00.000Z',
-    createdAt: '2026-01-01T00:00:00.000Z'
-  },
-  {
-    id: 'usr-k3',
-    username: 'k3_keamanan',
-    name: 'PIC K3 & Keamanan',
-    role: 'USER',
-    department: 'K3 & Keamanan',
-    email: 'k3.teluksirih@gmail.com',
-    password: 'user123',
-    avatarText: 'K3',
-    lastLogin: '2026-08-18T16:00:00.000Z',
-    createdAt: '2026-01-01T00:00:00.000Z'
-  },
-  {
-    id: 'usr-ling',
-    username: 'lingkungan',
-    name: 'PIC Lingkungan Hidup',
+    id: 'usr-lin',
+    username: 'lin.tir',
+    name: 'Lingkungan',
     role: 'USER',
     department: 'Lingkungan',
-    email: 'lingkungan.teluksirih@gmail.com',
-    password: 'user123',
+    email: 'pipteluksirihenviro@gmail.com',
+    phone: '081374151408',
+    password: 'Ip@2026lin',
     avatarText: 'LH',
     lastLogin: '2026-08-16T08:30:00.000Z',
     createdAt: '2026-01-01T00:00:00.000Z'
   },
   {
-    id: 'usr-proc',
-    username: 'pengadaan',
-    name: 'PIC Pengadaan',
+    id: 'usr-k3',
+    username: 'k3k.tir',
+    name: 'K3 & Keamanan',
+    role: 'USER',
+    department: 'K3 & Keamanan',
+    email: 'tesyamonika73@gmail.com',
+    phone: '081378440298',
+    password: 'Ip@2026k3k!',
+    avatarText: 'K3',
+    lastLogin: '2026-08-18T16:00:00.000Z',
+    createdAt: '2026-01-01T00:00:00.000Z'
+  },
+  {
+    id: 'usr-dan',
+    username: 'dan.tir',
+    name: 'Pengadaan',
     role: 'USER',
     department: 'Pengadaan',
-    email: 'pengadaan.teluksirih@gmail.com',
-    password: 'user123',
+    email: 'windatakawaii@gmail.com',
+    phone: '081276813858',
+    password: 'Ip@2026dan',
     avatarText: 'PG',
     lastLogin: '2026-08-19T15:10:00.000Z',
     createdAt: '2026-01-01T00:00:00.000Z'
   },
   {
     id: 'usr-smt',
-    username: 'sm_terintegrasi',
-    name: 'PIC Sistem Manajemen Terintegrasi',
+    username: 'smt.tir',
+    name: 'Sistem Manajemen Terintegrasi',
     role: 'USER',
     department: 'Sistem Manajemen Terintegrasi',
-    email: 'smt.teluksirih@gmail.com',
-    password: 'user123',
+    email: 'lolalorenza947@gmail.com',
+    phone: '082286684003',
+    password: 'Ip@2026smt!',
     avatarText: 'SM',
     lastLogin: '2026-08-20T09:00:00.000Z',
     createdAt: '2026-01-01T00:00:00.000Z'
@@ -930,14 +944,26 @@ function readUsers(): any[] {
 
     let modified = false;
     SEED_USERS.forEach(seed => {
-      const existing = parsed.find(p => p.id === seed.id || (p.username && p.username.toLowerCase() === seed.username.toLowerCase()));
+      const existing = parsed.find(p => 
+        p.id === seed.id || 
+        (p.username && p.username.toLowerCase() === seed.username.toLowerCase()) ||
+        (p.name && p.name.toLowerCase() === seed.name.toLowerCase())
+      );
       if (!existing) {
-        parsed.unshift(seed);
+        parsed.push(seed);
         modified = true;
       } else {
-        // Backfill email if missing
-        if (!existing.email && seed.email) {
+        // Backfill and update email & phone if missing or default
+        if (!existing.phone && seed.phone) {
+          existing.phone = seed.phone;
+          modified = true;
+        }
+        if (seed.email && (!existing.email || existing.email.includes('.co.id') || existing.email.includes('@pln.co.id'))) {
           existing.email = seed.email;
+          modified = true;
+        }
+        if (!existing.username) {
+          existing.username = seed.username;
           modified = true;
         }
       }
@@ -983,6 +1009,7 @@ app.post('/api/users/sync', (req, res) => {
     return {
       ...existing,
       email: incoming.email !== undefined ? incoming.email : existing.email,
+      phone: incoming.phone !== undefined ? incoming.phone : existing.phone,
       password: (incoming.password && String(incoming.password).trim().length >= 4) ? String(incoming.password).trim() : existing.password,
       name: incoming.name || existing.name,
       department: incoming.department || existing.department,
@@ -1001,9 +1028,9 @@ app.post('/api/users/sync', (req, res) => {
   return res.json({ success: true, count: mergedList.length, users: mergedList });
 });
 
-// Single user update endpoint (Email, Password, Name, Role, Username, Department)
+// Single user update endpoint (Email, Phone, Password, Name, Role, Username, Department)
 app.post('/api/users/update', (req, res) => {
-  const { userId, email, password, name, role, username, department, _user } = req.body;
+  const { userId, email, phone, password, name, role, username, department, _user } = req.body;
   if (!userId) {
     return res.status(400).json({ error: 'userId wajib diisi' });
   }
@@ -1042,6 +1069,9 @@ app.post('/api/users/update', (req, res) => {
       const result = { ...existing };
       if (email !== undefined) {
         result.email = String(email).trim() || undefined;
+      }
+      if (phone !== undefined) {
+        result.phone = String(phone).trim();
       }
       if (password && String(password).trim().length >= 4) {
         result.password = String(password).trim();
@@ -1116,6 +1146,9 @@ app.post('/api/users/batch-update', (req, res) => {
     if (incoming.email !== undefined) {
       const cleanEmail = String(incoming.email || '').trim();
       result.email = cleanEmail || undefined;
+    }
+    if (incoming.phone !== undefined) {
+      result.phone = String(incoming.phone || '').trim();
     }
     if (incoming.password && String(incoming.password).trim().length >= 4) {
       result.password = String(incoming.password).trim();
@@ -1231,98 +1264,112 @@ app.post('/api/auth/login', (req, res) => {
 
   // Comprehensive alias mapping for all 14 official accounts and divisions
   const aliasMap: Record<string, string> = {
-    // Admin 1 - Nofi Zahara
-    'admin.nofi': 'nofi',
-    'admin1': 'nofi',
-    'nofizahara': 'nofi',
-    'nofi zahara': 'nofi',
-    // Admin 2 - Resna Wati
-    'admin.resna': 'resna',
-    'admin2': 'resna',
-    'resnawati': 'resna',
-    'resna wati': 'resna',
-    // Admin 3 - Deri Tialis Peristiawan
-    'admin.deri': 'deri',
-    'admin3': 'deri',
-    'deritialis': 'deri',
-    'deri tialis': 'deri',
-    'deri tialis peristiawan': 'deri',
-    // Admin 4 - Yuda Putra Utama
-    'admin.yuda': 'yuda',
-    'admin4': 'yuda',
-    'yudaputra': 'yuda',
-    'yuda putra': 'yuda',
-    'yuda putra utama': 'yuda',
-    // Master Administrator / SDM Teluk Sirih
-    'admin': 'admin',
-    'administrator': 'admin',
-    'master': 'admin',
-    'master admin': 'admin',
-    'admin master': 'admin',
-    'admin utama': 'admin',
-    'sdm': 'admin',
-    'sdm upk': 'admin',
-    'sdm upk teluk sirih': 'admin',
-    'sdm teluk sirih': 'admin',
-    // PIC Keuangan & Umum
-    'keuangan & umum': 'keuangan',
-    'keuangan dan umum': 'keuangan',
-    'keuangan': 'keuangan',
-    'ku': 'keuangan',
-    'k&u': 'keuangan',
-    // PIC Operasi
-    'operasi': 'operasi',
-    'opr': 'operasi',
-    'ops': 'operasi',
-    // PIC Pemeliharaan
-    'pemeliharaan': 'pemeliharaan',
-    'har': 'pemeliharaan',
-    // PIC Enjiniring
-    'enjiniring': 'enjiniring',
-    'enj': 'enjiniring',
-    'engineering': 'enjiniring',
-    // PIC Coal & Ash Handling
-    'coal_ash': 'coal_ash',
-    'coal ash': 'coal_ash',
-    'coal & ash': 'coal_ash',
-    'coal and ash': 'coal_ash',
-    'coal & ash handling': 'coal_ash',
-    'coal and ash handling': 'coal_ash',
-    'cah': 'coal_ash',
-    // PIC K3 & Keamanan
-    'k3_keamanan': 'k3_keamanan',
-    'k3': 'k3_keamanan',
-    'k3 keamanan': 'k3_keamanan',
-    'k3 & keamanan': 'k3_keamanan',
-    'k3 dan keamanan': 'k3_keamanan',
-    'keamanan': 'k3_keamanan',
-    'keselamatan': 'k3_keamanan',
-    // PIC Lingkungan Hidup
-    'lingkungan': 'lingkungan',
-    'lingkungan hidup': 'lingkungan',
-    'lh': 'lingkungan',
-    'lin': 'lingkungan',
-    // PIC Pengadaan
-    'pengadaan': 'pengadaan',
-    'proc': 'pengadaan',
-    'procurement': 'pengadaan',
-    'dan': 'pengadaan',
-    // PIC Sistem Manajemen Terintegrasi
-    'sm_terintegrasi': 'sm_terintegrasi',
-    'smt': 'sm_terintegrasi',
-    'sm terintegrasi': 'sm_terintegrasi',
-    'sistem manajemen terintegrasi': 'sm_terintegrasi'
+    // 1. Admin Si Apin
+    'admin.siapin': 'admin.siapin',
+    'admin': 'admin.siapin',
+    'administrator': 'admin.siapin',
+    'master': 'admin.siapin',
+    'sdm': 'admin.siapin',
+    'sdm upk': 'admin.siapin',
+    'sdm.upkteluksirih@gmail.com': 'admin.siapin',
+    // 2. Deri Tialis Peristiawan
+    'deri.tialis': 'deri.tialis',
+    'admin.deri': 'deri.tialis',
+    'deri': 'deri.tialis',
+    'deritialis': 'deri.tialis',
+    'deri tialis': 'deri.tialis',
+    'deri tialis peristiawan': 'deri.tialis',
+    // 3. Yuda Putra Utama
+    'yuda.putra': 'yuda.putra',
+    'admin.yuda': 'yuda.putra',
+    'yuda': 'yuda.putra',
+    'yudaputra': 'yuda.putra',
+    'yuda putra': 'yuda.putra',
+    'yuda putra utama': 'yuda.putra',
+    // 4. Nofi Zahara
+    'nofi.zahara': 'nofi.zahara',
+    'admin.nofi': 'nofi.zahara',
+    'nofi': 'nofi.zahara',
+    'nofizahara': 'nofi.zahara',
+    'nofi zahara': 'nofi.zahara',
+    // 5. Resna Wati
+    'resna.wati': 'resna.wati',
+    'admin.resna': 'resna.wati',
+    'resna': 'resna.wati',
+    'resnawati': 'resna.wati',
+    'resna wati': 'resna.wati',
+    // 6. Pemeliharaan
+    'har.tir': 'har.tir',
+    'pemeliharaan': 'har.tir',
+    'har': 'har.tir',
+    'pemeliharaan pltu': 'har.tir',
+    // 7. Operasi
+    'opr.tir': 'opr.tir',
+    'operasi': 'opr.tir',
+    'opr': 'opr.tir',
+    'ops': 'opr.tir',
+    // 8. Keuangan & Umum
+    'keu.mum': 'keu.mum',
+    'keuangan & umum': 'keu.mum',
+    'keuangan dan umum': 'keu.mum',
+    'keuangan': 'keu.mum',
+    'ku': 'keu.mum',
+    'k&u': 'keu.mum',
+    // 9. Enjiniring
+    'enj.tir': 'enj.tir',
+    'enjiniring': 'enj.tir',
+    'enj': 'enj.tir',
+    'engineering': 'enj.tir',
+    // 10. Coal & Ash Handling
+    'cah.tir': 'cah.tir',
+    'coal_ash': 'cah.tir',
+    'coal ash': 'cah.tir',
+    'coal & ash': 'cah.tir',
+    'coal and ash': 'cah.tir',
+    'coal & ash handling': 'cah.tir',
+    'coal and ash handling': 'cah.tir',
+    'cah': 'cah.tir',
+    // 11. Lingkungan
+    'lin.tir': 'lin.tir',
+    'lingkungan': 'lin.tir',
+    'lingkungan hidup': 'lin.tir',
+    'lh': 'lin.tir',
+    'lin': 'lin.tir',
+    // 12. K3 & Keamanan
+    'k3k.tir': 'k3k.tir',
+    'k3_keamanan': 'k3k.tir',
+    'k3': 'k3k.tir',
+    'k3k': 'k3k.tir',
+    'k3 keamanan': 'k3k.tir',
+    'k3 & keamanan': 'k3k.tir',
+    'k3 dan keamanan': 'k3k.tir',
+    'keamanan': 'k3k.tir',
+    // 13. Pengadaan
+    'dan.tir': 'dan.tir',
+    'pengadaan': 'dan.tir',
+    'proc': 'dan.tir',
+    'procurement': 'dan.tir',
+    'dan': 'dan.tir',
+    // 14. Sistem Manajemen Terintegrasi
+    'smt.tir': 'smt.tir',
+    'sm_terintegrasi': 'smt.tir',
+    'smt': 'smt.tir',
+    'sm terintegrasi': 'smt.tir',
+    'sistem manajemen terintegrasi': 'smt.tir'
   };
 
   const targetUsername = aliasMap[cleanUsername] || cleanUsername;
   const users = readUsers();
+  const digitsOnly = cleanUsername.replace(/[^0-9]/g, '');
 
-  // Multi-tier user lookup (Username, ID, Email, Full Name, Department)
+  // Multi-tier user lookup (Username, ID, Email, Phone Number, Full Name, Department)
   let user = users.find((u: any) => 
     (u.username && u.username.toLowerCase() === targetUsername) ||
     (u.id && u.id.toLowerCase() === targetUsername) ||
+    (u.username && u.username.toLowerCase() === cleanUsername) ||
     (u.email && u.email.toLowerCase() === cleanUsername) ||
-    (u.email && u.email.toLowerCase() === targetUsername)
+    (u.email && u.email.toLowerCase() === targetUsername) ||
+    (u.phone && (u.phone === cleanUsername || (digitsOnly.length >= 8 && u.phone.replace(/[^0-9]/g, '') === digitsOnly)))
   );
 
   // Fallback match by exact full name or department name
@@ -1336,7 +1383,7 @@ app.post('/api/auth/login', (req, res) => {
   if (!user) {
     return res.status(401).json({ 
       success: false, 
-      error: `User ID atau Email "${username}" tidak ditemukan. Pastikan Anda menggunakan User ID bagian (contoh: keuangan, operasi, admin) atau alamat email terdaftar.` 
+      error: `User ID, Email, atau Nomor HP "${username}" tidak ditemukan. Pastikan Anda menggunakan ID Bagian (contoh: admin.siapin, deri.tialis, har.tir, opr.tir) atau email/no HP terdaftar.` 
     });
   }
 

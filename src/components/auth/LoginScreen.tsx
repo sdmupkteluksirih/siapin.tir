@@ -80,23 +80,23 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   };
 
   const ADMIN_ACCOUNTS = [
-    { username: 'admin', name: 'Master Administrator', desc: 'Akses penuh sistem Si APIN' },
-    { username: 'deri', name: 'DERI TIALIS PERISTIAWAN', desc: 'Admin TI & Aplikasi 1' },
-    { username: 'yuda', name: 'YUDA PUTRA UTAMA', desc: 'Admin TI & Aplikasi 2' },
-    { username: 'nofi', name: 'NOFI ZAHARA', desc: 'Admin Keuangan & Umum 1' },
-    { username: 'resna', name: 'RESNA WATI', desc: 'Admin Keuangan & Umum 2' },
+    { username: 'admin.siapin', name: 'Admin Si Apin', desc: 'Master Admin Si APIN & SDM' },
+    { username: 'deri.tialis', name: 'Deri Tialis Peristiawan', desc: 'Admin Sistem Informasi & TI 1' },
+    { username: 'yuda.putra', name: 'Yuda Putra Utama', desc: 'Admin Sistem Informasi & TI 2' },
+    { username: 'nofi.zahara', name: 'Nofi Zahara', desc: 'Admin Keuangan & Umum 1' },
+    { username: 'resna.wati', name: 'Resna Wati', desc: 'Admin Keuangan & Umum 2' },
   ];
 
   const DIVISION_ACCOUNTS = [
-    { username: 'keuangan', name: 'Keuangan & Umum', code: 'KU' },
-    { username: 'operasi', name: 'Operasi', code: 'OPS' },
-    { username: 'pemeliharaan', name: 'Pemeliharaan', code: 'HAR' },
-    { username: 'enjiniring', name: 'Enjiniring', code: 'ENJ' },
-    { username: 'coal_ash', name: 'Coal & Ash Handling', code: 'CAH' },
-    { username: 'k3_keamanan', name: 'K3 & Keamanan', code: 'K3' },
-    { username: 'lingkungan', name: 'Lingkungan Hidup', code: 'LH' },
-    { username: 'pengadaan', name: 'Pengadaan', code: 'PROC' },
-    { username: 'sm_terintegrasi', name: 'Sistem Manajemen Terintegrasi', code: 'SMT' },
+    { username: 'har.tir', name: 'Pemeliharaan', code: 'HAR' },
+    { username: 'opr.tir', name: 'Operasi', code: 'OPR' },
+    { username: 'keu.mum', name: 'Keuangan & Umum', code: 'KU' },
+    { username: 'enj.tir', name: 'Enjiniring', code: 'ENJ' },
+    { username: 'cah.tir', name: 'Coal & Ash Handling', code: 'CAH' },
+    { username: 'lin.tir', name: 'Lingkungan', code: 'LIN' },
+    { username: 'k3k.tir', name: 'K3 & Keamanan', code: 'K3K' },
+    { username: 'dan.tir', name: 'Pengadaan', code: 'DAN' },
+    { username: 'smt.tir', name: 'Sistem Manajemen Terintegrasi', code: 'SMT' },
   ];
 
   return (

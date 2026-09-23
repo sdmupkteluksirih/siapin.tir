@@ -15,7 +15,8 @@ import {
   Sparkles,
   User,
   Mail,
-  Building2
+  Building2,
+  Phone
 } from 'lucide-react';
 
 interface ChangePasswordModalProps {
@@ -45,6 +46,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
   // Profile State
   const [fullName, setFullName] = useState(currentUser.name);
   const [email, setEmail] = useState(currentUser.email || '');
+  const [phone, setPhone] = useState(currentUser.phone || '');
 
   // UI status
   const [isLoading, setIsLoading] = useState(false);
@@ -143,6 +145,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
 
     const cleanName = fullName.trim();
     const cleanEmail = email.trim();
+    const cleanPhone = phone.trim();
 
     if (!cleanName) {
       setErrorMsg('Nama lengkap tidak boleh kosong.');
@@ -153,7 +156,8 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
     try {
       const success = await authStorage.updateUserAsync(currentUser.id, {
         name: cleanName,
-        email: cleanEmail
+        email: cleanEmail,
+        phone: cleanPhone
       });
 
       if (success) {
@@ -471,6 +475,25 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
                   />
                   <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700 block">
+                  Nomor HP / WhatsApp
+                </label>
+                <div className="relative">
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="Contoh: 081275082259"
+                    className="w-full py-2.5 pl-10 pr-4 rounded-xl border border-slate-200 text-xs sm:text-sm bg-slate-50 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 text-slate-900"
+                  />
+                  <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                </div>
+                <p className="text-[10px] text-slate-400">
+                  Nomor HP ini digunakan untuk koordinasi pemesanan ruangan dan konsumsi rapat.
+                </p>
               </div>
 
               <div className="pt-2">

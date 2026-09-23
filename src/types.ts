@@ -27,6 +27,7 @@ export interface UserAccount {
   role: 'ADMIN' | 'USER';
   department: string;
   email?: string;
+  phone?: string;
   password: string;
   avatarText?: string;
   lastLogin?: string;

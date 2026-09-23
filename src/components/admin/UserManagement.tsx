@@ -19,7 +19,8 @@ import {
   Trash2,
   Edit,
   Sparkles,
-  RefreshCw
+  RefreshCw,
+  Phone
 } from 'lucide-react';
 
 export const UserManagement: React.FC = () => {
@@ -42,12 +43,14 @@ export const UserManagement: React.FC = () => {
   const [newRole, setNewRole] = useState<'ADMIN' | 'USER'>('USER');
   const [newUserPass, setNewUserPass] = useState('user123');
   const [newEmail, setNewEmail] = useState('');
+  const [newPhone, setNewPhone] = useState('');
 
   // Edit user modal state
   const [selectedUserForEdit, setSelectedUserForEdit] = useState<UserAccount | null>(null);
   const [editUsername, setEditUsername] = useState('');
   const [editFullName, setEditFullName] = useState('');
   const [editEmail, setEditEmail] = useState('');
+  const [editPhone, setEditPhone] = useState('');
   const [editDepartment, setEditDepartment] = useState('Operasi');
   const [editRole, setEditRole] = useState<'ADMIN' | 'USER'>('USER');
   const [editPassword, setEditPassword] = useState('');
@@ -146,7 +149,7 @@ export const UserManagement: React.FC = () => {
   };
 
   const handleCopyCredentials = (user: UserAccount) => {
-    const text = `Akun Meeting PLN Teluk Sirih\nUser ID: ${user.username}\nPassword: ${user.password}\nNama: ${user.name}\nDivisi: ${user.department}`;
+    const text = `Akun Meeting PLN Teluk Sirih\nUser ID: ${user.username}\nPassword: ${user.password}\nNama: ${user.name}\nDivisi: ${user.department}\nEmail: ${user.email || '-'}\nNomor HP: ${user.phone || '-'}`;
     navigator.clipboard.writeText(text);
     showNotificationMsg(`Kredensial akun ${user.username} berhasil disalin ke clipboard!`);
   };
@@ -168,6 +171,7 @@ export const UserManagement: React.FC = () => {
       username: newUsername.trim().toLowerCase(),
       name: newFullName.trim(),
       email: newEmail.trim() || undefined,
+      phone: newPhone.trim() || undefined,
       department: newDepartment,
       role: newRole,
       password: newUserPass.trim(),
@@ -179,6 +183,7 @@ export const UserManagement: React.FC = () => {
     setNewUsername('');
     setNewFullName('');
     setNewEmail('');
+    setNewPhone('');
     setNewUserPass('user123');
   };
 
@@ -187,6 +192,7 @@ export const UserManagement: React.FC = () => {
     setEditUsername(user.username);
     setEditFullName(user.name);
     setEditEmail(user.email || '');
+    setEditPhone(user.phone || '');
     setEditDepartment(user.department);
     setEditRole(user.role);
     setEditPassword('');
@@ -209,7 +215,7 @@ export const UserManagement: React.FC = () => {
 
     // Check duplicate username if username changed
     if (cleanUsername !== selectedUserForEdit.username.toLowerCase()) {
-      if (selectedUserForEdit.username === 'admin') {
+      if (selectedUserForEdit.username === 'admin' || selectedUserForEdit.username === 'admin.siapin') {
         showNotificationMsg('User ID master admin tidak dapat diubah.', 'error');
         return;
       }
@@ -226,13 +232,15 @@ export const UserManagement: React.FC = () => {
     }
 
     // Prevent changing master admin role to non-admin
-    const finalRole = selectedUserForEdit.username === 'admin' ? 'ADMIN' : editRole;
-    const finalUsername = selectedUserForEdit.username === 'admin' ? 'admin' : cleanUsername;
+    const isMasterAdmin = selectedUserForEdit.username === 'admin' || selectedUserForEdit.username === 'admin.siapin';
+    const finalRole = isMasterAdmin ? 'ADMIN' : editRole;
+    const finalUsername = isMasterAdmin ? selectedUserForEdit.username : cleanUsername;
 
     const updates: any = {
       username: finalUsername,
       name: editFullName.trim(),
       email: editEmail.trim() || undefined,
+      phone: editPhone.trim() || undefined,
       department: editDepartment,
       role: finalRole
     };
@@ -247,7 +255,7 @@ export const UserManagement: React.FC = () => {
       await authStorage.resetPasswordAsync(selectedUserForEdit.id, cleanNewPass);
       showNotificationMsg(`Data akun "${finalUsername}" dan Password Baru berhasil diperbarui & disimpan ke server.`);
     } else {
-      showNotificationMsg(`Data akun "${finalUsername}" (User ID, Email, Nama & Role) berhasil diperbarui secara realtime.`);
+      showNotificationMsg(`Data akun "${finalUsername}" (User ID, Email, No HP, Nama & Role) berhasil diperbarui secara realtime.`);
     }
     setSelectedUserForEdit(null);
   };
@@ -478,7 +486,16 @@ export const UserManagement: React.FC = () => {
                               {user.email && (
                                 <>
                                   <span>&bull;</span>
-                                  <span className="text-slate-500 font-mono text-[10px] bg-slate-50 px-1 rounded border border-slate-200">{user.email}</span>
+                                  <span className="text-slate-500 font-mono text-[10px] bg-slate-50 px-1 rounded border border-slate-200" title="Email akun">{user.email}</span>
+                                </>
+                              )}
+                              {user.phone && (
+                                <>
+                                  <span>&bull;</span>
+                                  <span className="text-emerald-700 font-mono text-[10px] bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200 font-semibold flex items-center gap-0.5" title="Nomor HP PIC">
+                                    <Phone className="w-2.5 h-2.5" />
+                                    <span>{user.phone}</span>
+                                  </span>
                                 </>
                               )}
                             </div>
@@ -745,17 +762,31 @@ export const UserManagement: React.FC = () => {
                 />
               </div>
 
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700 block uppercase tracking-wider">
-                  Email Notifikasi (Opsional)
-                </label>
-                <input
-                  type="email"
-                  value={newEmail}
-                  onChange={(e) => setNewEmail(e.target.value)}
-                  placeholder="misal: pic.operasi@pln.co.id"
-                  className="w-full py-2 px-3 rounded-xl border border-slate-200 text-xs sm:text-sm font-medium bg-slate-50/50 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700 block uppercase tracking-wider">
+                    Email Notifikasi (Opsional)
+                  </label>
+                  <input
+                    type="email"
+                    value={newEmail}
+                    onChange={(e) => setNewEmail(e.target.value)}
+                    placeholder="misal: pic.operasi@pln.co.id"
+                    className="w-full py-2 px-3 rounded-xl border border-slate-200 text-xs sm:text-sm font-medium bg-slate-50/50 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700 block uppercase tracking-wider">
+                    Nomor HP / WA (Opsional)
+                  </label>
+                  <input
+                    type="tel"
+                    value={newPhone}
+                    onChange={(e) => setNewPhone(e.target.value)}
+                    placeholder="misal: 08123456789"
+                    className="w-full py-2 px-3 rounded-xl border border-slate-200 text-xs sm:text-sm font-medium bg-slate-50/50 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
@@ -889,18 +920,33 @@ export const UserManagement: React.FC = () => {
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700 block uppercase tracking-wider">
-                  Nama Lengkap / PIC <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={editFullName}
-                  onChange={(e) => setEditFullName(e.target.value)}
-                  placeholder="Nama lengkap PIC"
-                  required
-                  className="w-full py-2.5 px-3 rounded-xl border border-slate-200 text-xs sm:text-sm font-medium bg-slate-50/50 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700 block uppercase tracking-wider">
+                    Nama Lengkap / PIC <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={editFullName}
+                    onChange={(e) => setEditFullName(e.target.value)}
+                    placeholder="Nama lengkap PIC"
+                    required
+                    className="w-full py-2.5 px-3 rounded-xl border border-slate-200 text-xs sm:text-sm font-medium bg-slate-50/50 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700 block uppercase tracking-wider">
+                    Nomor HP / WhatsApp
+                  </label>
+                  <input
+                    type="tel"
+                    value={editPhone}
+                    onChange={(e) => setEditPhone(e.target.value)}
+                    placeholder="misal: 081275082259"
+                    className="w-full py-2.5 px-3 rounded-xl border border-slate-200 text-xs sm:text-sm font-medium bg-slate-50/50 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
               </div>
 
               <div className="space-y-1">

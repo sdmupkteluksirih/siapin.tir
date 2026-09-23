@@ -49,7 +49,7 @@ export const BookingWizard: React.FC<BookingWizardProps> = ({
       makanSiang: lunchEligible ? 'Iya' : 'Tidak',
       bookerName: user?.name || '',
       department: user?.department || '',
-      whatsapp: '',
+      whatsapp: user?.phone || '',
       email: user?.email || '',
       meetingTitle: '',
       meetingLocation: '',
@@ -72,7 +72,8 @@ export const BookingWizard: React.FC<BookingWizardProps> = ({
         ...prev,
         bookerName: prev.bookerName || currentUser.name,
         department: prev.department || currentUser.department,
-        email: prev.email || currentUser.email || ''
+        email: prev.email || currentUser.email || '',
+        whatsapp: prev.whatsapp || currentUser.phone || ''
       }));
     }
   }, [currentUser]);
