@@ -1080,7 +1080,7 @@ export const authStorage = {
   deleteUser(userId: string): boolean {
     const users = this.getAllUsers();
     const target = users.find(u => u.id === userId);
-    if (target?.username === 'admin') {
+    if (target?.username === 'admin.siapin' || target?.username === 'admin') {
       // Prevent deleting master admin
       return false;
     }

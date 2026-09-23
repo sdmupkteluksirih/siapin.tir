@@ -457,7 +457,7 @@ export const UserManagement: React.FC = () => {
                 </tr>
               ) : (
                 filteredUsers.map((user) => {
-                  const isMaster = user.username === 'admin';
+                  const isMaster = user.username === 'admin.siapin' || user.username === 'admin';
                   const isPassRevealed = revealedPasswords[user.id];
 
                   return (

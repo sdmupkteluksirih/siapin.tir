@@ -212,7 +212,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                     id="login-username-input"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    placeholder="Contoh: keuangan, operasi, admin, atau email"
+                    placeholder="Contoh: admin.siapin, har.tir, opr.tir, atau email"
                     required
                     autoCapitalize="none"
                     autoCorrect="off"
@@ -223,7 +223,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                   <User className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
                 </div>
                 <p className="text-[11px] text-slate-400">
-                  User ID bagian: <code className="font-mono text-indigo-600 font-bold">keuangan</code>, <code className="font-mono text-indigo-600 font-bold">operasi</code>, <code className="font-mono text-indigo-600 font-bold">k3_keamanan</code>, <code className="font-mono text-indigo-600 font-bold">admin</code>, dll.
+                  User ID resmi: <code className="font-mono text-indigo-600 font-bold">admin.siapin</code>, <code className="font-mono text-indigo-600 font-bold">har.tir</code>, <code className="font-mono text-indigo-600 font-bold">opr.tir</code>, <code className="font-mono text-indigo-600 font-bold">keu.mum</code>, dll.
                 </p>
               </div>
 
