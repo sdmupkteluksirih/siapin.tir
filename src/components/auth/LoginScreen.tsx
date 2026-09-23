@@ -51,8 +51,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     setCopiedAccount(accUsername);
     setErrorMsg('');
     setTimeout(() => setCopiedAccount(null), 2500);
-    const passInput = document.getElementById('login-password-input');
-    if (passInput) passInput.focus();
+    const passInput = document.getElementById('login-password-input') as HTMLInputElement | null;
+    if (passInput) {
+      passInput.value = '';
+      passInput.focus();
+    }
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -250,7 +253,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                     autoCapitalize="none"
                     autoCorrect="off"
                     spellCheck="false"
-                    autoComplete="current-password"
+                    autoComplete="new-password"
                     className={`w-full py-3 pl-11 pr-11 rounded-xl border text-sm font-medium bg-slate-50 focus:bg-white focus:outline-hidden focus:ring-2 text-slate-900 font-mono transition-all ${
                       isCapsLockOn ? 'border-amber-300 focus:ring-amber-500' : 'border-slate-200 focus:ring-indigo-500'
                     }`}
@@ -297,7 +300,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
             <div className="mt-5 pt-4 border-t border-slate-100">
               <button
                 type="button"
-                onClick={() => setShowAccountGuide(!showAccountGuide)}
+                onClick={() => {
+                  setShowAccountGuide(!showAccountGuide);
+                  setPassword('');
+                  setShowPassword(false);
+                }}
                 className="w-full flex items-center justify-between text-xs font-semibold text-slate-600 hover:text-indigo-600 p-2 rounded-xl bg-slate-50 hover:bg-indigo-50/60 border border-slate-200 transition-all cursor-pointer"
               >
                 <div className="flex items-center gap-2">
@@ -310,7 +317,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
               {showAccountGuide && (
                 <div className="mt-3 p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3.5 animate-in fade-in">
                   <div className="text-[11px] text-slate-500 bg-amber-50 p-2.5 rounded-xl border border-amber-200 text-amber-900 leading-relaxed">
-                    💡 <strong>Tips Masuk:</strong> Klik salah satu akun di bawah untuk otomatis mengisi User ID ke formulir. Masukkan kata sandi akun Anda secara manual.
+                    💡 <strong>Tips Masuk:</strong> Klik salah satu akun di bawah untuk otomatis mengisi <strong>User ID saja</strong> ke formulir. Kata sandi tetap disembunyikan/kosong dan harus dimasukkan secara manual demi keamanan.
                   </div>
 
                   {/* Section Admin */}

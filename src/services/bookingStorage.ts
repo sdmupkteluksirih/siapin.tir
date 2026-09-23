@@ -598,33 +598,39 @@ async function fetchBookingsFromServer(initialSync: boolean = false) {
     } catch {
       // Ignore JSON error
     }
-    const localItems = Array.from(localMap.values());
+    // Purge deprecated test IDs from local memory and storage
+    const badIds = new Set(['test-curl-1', 'test-speed-1', 'test-123', 'test-att-1']);
+    badIds.forEach(id => {
+      localMap.delete(id);
+    });
 
-    // 2. Identify any local-only bookings (e.g. submitted while offline or before sync)
+    const localItems = Array.from(localMap.values()).filter(b => !badIds.has(b.id));
+
+    // 2. Identify only genuinely offline-created bookings pending server sync
     const serverIds = new Set(serverBookings.map(b => b.id));
-    const localOnly = localItems.filter(b => !serverIds.has(b.id));
+    const localPendingSync = localItems.filter(b => !serverIds.has(b.id) && (b as any)._pendingSync === true);
 
-    // 3. Setup unified map starting with server bookings
+    // 3. Setup unified map starting with authoritative server bookings
     const mergedMap = new Map<string, Booking>();
-    serverBookings.forEach(b => mergedMap.set(b.id, b));
+    serverBookings.filter(b => !badIds.has(b.id)).forEach(b => mergedMap.set(b.id, b));
 
-    // 4. If there are local-only bookings, securely push them to the server immediately
-    if (localOnly.length > 0) {
+    // 4. If there are pending offline bookings, push them to the server
+    if (localPendingSync.length > 0) {
       try {
         const syncRes = await fetch('/api/bookings/sync', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ bookings: localOnly })
+          body: JSON.stringify({ bookings: localPendingSync })
         });
         if (syncRes.ok) {
           const syncData = await syncRes.json();
           if (syncData.bookings && Array.isArray(syncData.bookings)) {
-            syncData.bookings.forEach((b: Booking) => mergedMap.set(b.id, b));
+            syncData.bookings.filter((b: Booking) => !badIds.has(b.id)).forEach((b: Booking) => mergedMap.set(b.id, b));
           }
         }
       } catch {
-        // Fallback to local inclusion
-        localOnly.forEach(b => mergedMap.set(b.id, b));
+        // Fallback to local inclusion while remaining offline
+        localPendingSync.forEach(b => mergedMap.set(b.id, b));
       }
     }
 
@@ -773,12 +779,12 @@ export const bookingStorage = {
     const q = query.trim().toLowerCase();
     if (!q) return this.getAll();
     return this.getAll().filter(b => 
-      b.bookingNumber.toLowerCase().includes(q) ||
-      b.bookerName.toLowerCase().includes(q) ||
-      b.department.toLowerCase().includes(q) ||
-      b.meetingTitle.toLowerCase().includes(q) ||
-      b.whatsapp.includes(q) ||
-      b.meetingLocation.toLowerCase().includes(q)
+      (b.bookingNumber || '').toLowerCase().includes(q) ||
+      (b.bookerName || '').toLowerCase().includes(q) ||
+      (b.department || '').toLowerCase().includes(q) ||
+      (b.meetingTitle || '').toLowerCase().includes(q) ||
+      (b.whatsapp || '').includes(q) ||
+      (b.meetingLocation || '').toLowerCase().includes(q)
     );
   },
 
@@ -982,20 +988,15 @@ export const bookingStorage = {
       } catch {}
       notifySubscribers();
 
+      // Instantly notify other listeners & tabs
+      try {
+        sseClient.notifyLocal('bookings_changed', savedBooking);
+      } catch {}
+
       return savedBooking;
     } catch (err: any) {
-      if (err.message && err.message.includes('Auto-Interlock')) {
-        throw err;
-      }
-      // If network failure, fall back to local optimistic creation
-      console.warn('[SI APIN] Offline/Network fallback booking creation:', err);
-      const updated = [newBooking, ...all.filter(b => b.id !== newBooking.id)];
-      cachedBookings = updated;
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-      } catch {}
-      notifySubscribers();
-      return newBooking;
+      // Re-throw all validation & server errors so user and UI are aware and not misled
+      throw err;
     }
   },
 

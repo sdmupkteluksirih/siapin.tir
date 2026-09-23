@@ -94,7 +94,12 @@
     "phone": "083182271472",
     "password": "Ip@2026ksa!",
     "avatarText": "KU",
-    "createdAt": "2026-01-01T00:00:00.000Z"
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "updatedAt": "2026-09-23T07:56:36.647Z",
+    "updatedById": "admin.siapin",
+    "updatedByName": "Administrator",
+    "updatedByRole": "ADMIN",
+    "lastLogin": "2026-09-23T07:56:41.393Z"
   },
   {
     "id": "usr-enj",

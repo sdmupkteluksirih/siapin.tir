@@ -44,26 +44,44 @@ export const SearchBooking: React.FC<SearchBookingProps> = ({
 
   const refreshList = useCallback(() => {
     const all = bookingStorage.getAll();
+    let list: Booking[] = [];
+    const userDept = (currentUser?.department || '').trim().toLowerCase();
+
     if (query.trim()) {
       const found = bookingStorage.search(query);
-      if (activeTab === 'MY_DEPT' && currentUser?.department) {
-        setResults(found.filter(b => b.department.toLowerCase() === currentUser.department.toLowerCase()));
+      if (activeTab === 'MY_DEPT' && userDept) {
+        list = found.filter(b => (b.department || '').trim().toLowerCase() === userDept);
       } else {
-        setResults(found);
+        list = found;
       }
     } else {
-      if (activeTab === 'MY_DEPT' && currentUser?.department) {
-        setResults(all.filter(b => b.department.toLowerCase() === currentUser.department.toLowerCase()));
+      if (activeTab === 'MY_DEPT' && userDept) {
+        list = all.filter(b => (b.department || '').trim().toLowerCase() === userDept);
       } else {
-        setResults(all);
+        list = all;
       }
     }
-    // Update selected booking if currently open
-    if (selectedBooking) {
-      const updated = all.find(b => b.id === selectedBooking.id);
-      if (updated) setSelectedBooking(updated);
-    }
-  }, [query, activeTab, currentUser, selectedBooking]);
+
+    // Sort by meeting date descending, start time descending, created at descending
+    const sorted = [...list].sort((a, b) => {
+      const dateA = a.meetingDate || '';
+      const dateB = b.meetingDate || '';
+      if (dateA !== dateB) return dateB.localeCompare(dateA);
+      const startA = a.startTime || '';
+      const startB = b.startTime || '';
+      if (startA !== startB) return startB.localeCompare(startA);
+      return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+    });
+
+    setResults(sorted);
+
+    // Update selected booking if currently open or set to top result
+    setSelectedBooking(prev => {
+      if (!prev) return sorted.length > 0 ? sorted[0] : null;
+      const updated = all.find(b => b.id === prev.id);
+      return updated || (sorted.length > 0 ? sorted[0] : null);
+    });
+  }, [query, activeTab, currentUser]);
 
   // Real-time synchronization subscription
   useEffect(() => {
@@ -132,25 +150,35 @@ export const SearchBooking: React.FC<SearchBookingProps> = ({
             <button
               type="button"
               onClick={() => setActiveTab('ALL')}
-              className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
                 activeTab === 'ALL'
                   ? 'bg-white text-indigo-700 shadow-2xs font-bold'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              Semua Agenda Rapat
+              <span>Semua Agenda</span>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                activeTab === 'ALL' ? 'bg-indigo-100 text-indigo-800' : 'bg-slate-200 text-slate-700'
+              }`}>
+                {bookingStorage.getAll().length}
+              </span>
             </button>
             {currentUser?.department && (
               <button
                 type="button"
                 onClick={() => setActiveTab('MY_DEPT')}
-                className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
+                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
                   activeTab === 'MY_DEPT'
                     ? 'bg-white text-indigo-700 shadow-2xs font-bold'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                Bagian {currentUser.department}
+                <span>Bagian {currentUser.department}</span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                  activeTab === 'MY_DEPT' ? 'bg-indigo-100 text-indigo-800' : 'bg-slate-200 text-slate-700'
+                }`}>
+                  {bookingStorage.getAll().filter(b => (b.department || '').trim().toLowerCase() === currentUser.department.trim().toLowerCase()).length}
+                </span>
               </button>
             )}
           </div>

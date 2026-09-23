@@ -418,6 +418,13 @@ app.post('/api/bookings', (req, res) => {
     return res.status(400).json({ error: 'Data booking tidak lengkap' });
   }
 
+  // Ensure bookingNumber is always defined
+  if (!newBooking.bookingNumber || typeof newBooking.bookingNumber !== 'string') {
+    const dStr = (newBooking.meetingDate || new Date().toISOString().slice(0, 10)).replace(/-/g, '');
+    const deptPrefix = ((newBooking.department || 'BKG').trim().slice(0, 3)).toUpperCase();
+    newBooking.bookingNumber = `${deptPrefix}-${dStr}-${Math.floor(1000 + Math.random() * 9000)}`;
+  }
+
   const creatorUser = (req.body._user as any) || {};
   const actorId = creatorUser.username || creatorUser.id || newBooking.createdById || newBooking.bookerUsername || newBooking.department || 'user';
   const actorName = creatorUser.name || newBooking.createdByName || newBooking.bookerName || 'Pengguna';
@@ -745,13 +752,14 @@ app.post('/api/bookings/sync', (req, res) => {
     return res.status(400).json({ error: 'Array bookings dibutuhkan' });
   }
 
-  const current = readBookings();
+  const badIds = new Set(['test-curl-1', 'test-speed-1', 'test-123', 'test-att-1']);
+  const current = readBookings().filter(b => !badIds.has(b.id));
   const currentMap = new Map<string, any>();
   current.forEach((b) => currentMap.set(b.id, b));
 
   let changed = false;
   bookings.forEach((incoming) => {
-    if (!incoming || !incoming.id) return;
+    if (!incoming || !incoming.id || badIds.has(incoming.id) || incoming.id.startsWith('test-')) return;
     const existing = currentMap.get(incoming.id);
     if (!existing) {
       currentMap.set(incoming.id, incoming);
@@ -1280,7 +1288,7 @@ app.post('/api/users/reset-password', (req, res) => {
   res.json({ success: true, user: targetUser, users: updated, message: 'Password berhasil diperbarui di server' });
 });
 
-app.post('/api/auth/login', (req, res) => {
+app.post(['/api/auth/login', '/api/login'], (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) {
     return res.status(400).json({ success: false, error: 'User ID dan Kata Sandi wajib diisi.' });

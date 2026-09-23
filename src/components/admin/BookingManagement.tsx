@@ -48,19 +48,31 @@ export const BookingManagement: React.FC<BookingManagementProps> = ({
   const [selectedForWaModal, setSelectedForWaModal] = useState<{ booking: Booking; newStatus?: BookingStatus } | null>(null);
 
   // Filtered list
-  const filteredBookings = bookings.filter((item) => {
-    const matchesSearch = 
-      item.bookingNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.meetingTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.bookerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.department.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.meetingLocation.toLowerCase().includes(searchQuery.toLowerCase());
+  const filteredBookings = bookings
+    .filter((item) => {
+      const q = searchQuery.toLowerCase().trim();
+      const matchesSearch = 
+        !q ||
+        (item.bookingNumber || '').toLowerCase().includes(q) ||
+        (item.meetingTitle || '').toLowerCase().includes(q) ||
+        (item.bookerName || '').toLowerCase().includes(q) ||
+        (item.department || '').toLowerCase().includes(q) ||
+        (item.meetingLocation || '').toLowerCase().includes(q);
 
-    const matchesStatus = statusFilter === 'ALL' || item.status === statusFilter;
-    const matchesDate = !dateFilter || item.meetingDate === dateFilter;
+      const matchesStatus = statusFilter === 'ALL' || item.status === statusFilter;
+      const matchesDate = !dateFilter || item.meetingDate === dateFilter;
 
-    return matchesSearch && matchesStatus && matchesDate;
-  });
+      return matchesSearch && matchesStatus && matchesDate;
+    })
+    .sort((a, b) => {
+      const dateA = a.meetingDate || '';
+      const dateB = b.meetingDate || '';
+      if (dateA !== dateB) return dateB.localeCompare(dateA);
+      const startA = a.startTime || '';
+      const startB = b.startTime || '';
+      if (startA !== startB) return startB.localeCompare(startA);
+      return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+    });
 
   const handleQuickStatusChange = (booking: Booking, newStatus: BookingStatus) => {
     bookingStorage.updateStatus(booking.id, newStatus);
