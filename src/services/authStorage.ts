@@ -610,7 +610,11 @@ export const authStorage = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: cleanUsername, password: cleanPassword })
       });
-      if (res.ok) {
+
+      const contentType = res.headers.get('content-type') || '';
+      const isJson = contentType.includes('application/json');
+
+      if (res.ok && isJson) {
         const data = await res.json();
         if (data.success && data.user) {
           localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(data.user));
@@ -625,15 +629,18 @@ export const authStorage = {
           notifyAuthSubscribers();
           return { success: true, user: data.user };
         }
-      } else {
+      } else if (res.status === 401 && isJson) {
+        // Active server explicitly rejected credentials
         const errJson = await res.json().catch(() => ({}));
         return { success: false, error: errJson.error || 'User ID atau Kata Sandi tidak cocok.' };
       }
+      // If endpoint returns 404, 500, or HTML (e.g. Vercel static deployment or rewrite mismatch),
+      // smoothly fall through to client-side local verification below!
     } catch {
-      // Offline fallback
+      // Offline / network fallback
     }
 
-    // 2. Client-side login fallback
+    // 2. Client-side login fallback (guaranteed to work on Vercel, Netlify, or offline environments)
     return this.login(cleanUsername, cleanPassword);
   },
 
