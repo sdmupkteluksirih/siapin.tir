@@ -397,7 +397,7 @@ export const AdminSettings: React.FC = () => {
   };
 
   const handleResetData = () => {
-    if (window.confirm('Reset seluruh data ke data simulasi awal perusahaan (termasuk meeting hari ini 20 Agustus 2026)?')) {
+    if (window.confirm('Reset seluruh data booking? Semua jadwal dan riwayat pemesanan akan dikosongkan (bersih seperti aplikasi baru pakai). Akun login dan master pengguna tetap aman.')) {
       bookingStorage.reset();
       setResetSuccess(true);
       setTimeout(() => setResetSuccess(false), 3000);
@@ -419,7 +419,7 @@ export const AdminSettings: React.FC = () => {
       {resetSuccess && (
         <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm font-bold flex items-center gap-2 animate-in fade-in">
           <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-          <span>Data simulasi awal berhasil dimuat ulang!</span>
+          <span>Seluruh data booking berhasil di-reset bersih (fresh install)!</span>
         </div>
       )}
 
@@ -1382,17 +1382,17 @@ export const AdminSettings: React.FC = () => {
         </div>
 
         <p className="text-xs text-slate-600 leading-relaxed">
-          Tombol ini akan mereset penyimpanan lokal ke sampel rapat resmi (Meeting Finance, Meeting HR, IT Townhall, Kickoff Marketing, dll.) lengkap dengan data rekap konsumsi harian hari ini 20 Agustus 2026.
+          Tombol ini akan mereset dan mengosongkan seluruh data pemesanan ruang rapat & konsumsi, sehingga sistem menjadi bersih seperti aplikasi baru pakai (fresh app). Seluruh akun login pengguna dan master password tetap aman.
         </p>
 
         <button
           type="button"
-          id="btn-reset-demo-data"
+          id="btn-reset-clean-data"
           onClick={handleResetData}
           className="px-4 py-2.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs sm:text-sm transition-colors cursor-pointer flex items-center gap-2"
         >
           <RotateCcw className="w-4 h-4" />
-          <span>Reset ke Data Demo Awal</span>
+          <span>Reset Bersih Data Booking (Fresh App)</span>
         </button>
       </div>
     </div>

@@ -328,15 +328,15 @@ const SEED_BOOKINGS = [
 function readBookings(): any[] {
   try {
     if (!fs.existsSync(BOOKINGS_FILE)) {
-      fs.writeFileSync(BOOKINGS_FILE, JSON.stringify(SEED_BOOKINGS, null, 2), 'utf-8');
-      return SEED_BOOKINGS;
+      fs.writeFileSync(BOOKINGS_FILE, JSON.stringify([], null, 2), 'utf-8');
+      return [];
     }
     const raw = fs.readFileSync(BOOKINGS_FILE, 'utf-8');
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : SEED_BOOKINGS;
+    return Array.isArray(parsed) ? parsed : [];
   } catch (err) {
     console.error('Error reading bookings file:', err);
-    return SEED_BOOKINGS;
+    return [];
   }
 }
 
@@ -413,125 +413,137 @@ app.get('/api/bookings', (req, res) => {
 
 // POST create booking
 app.post('/api/bookings', (req, res) => {
-  const newBooking = req.body;
-  if (!newBooking || !newBooking.id || !newBooking.meetingTitle) {
-    return res.status(400).json({ error: 'Data booking tidak lengkap' });
-  }
+  try {
+    const newBooking = req.body;
+    if (!newBooking || !newBooking.id || !newBooking.meetingTitle) {
+      return res.status(400).json({ error: 'Data booking tidak lengkap. Judul agenda rapat wajib diisi.' });
+    }
 
-  // Ensure bookingNumber is always defined
-  if (!newBooking.bookingNumber || typeof newBooking.bookingNumber !== 'string') {
-    const dStr = (newBooking.meetingDate || new Date().toISOString().slice(0, 10)).replace(/-/g, '');
-    const deptPrefix = ((newBooking.department || 'BKG').trim().slice(0, 3)).toUpperCase();
-    newBooking.bookingNumber = `${deptPrefix}-${dStr}-${Math.floor(1000 + Math.random() * 9000)}`;
-  }
+    // Ensure bookingNumber is always defined
+    if (!newBooking.bookingNumber || typeof newBooking.bookingNumber !== 'string') {
+      const dStr = (newBooking.meetingDate || new Date().toISOString().slice(0, 10)).replace(/-/g, '');
+      const deptPrefix = ((newBooking.department || 'BKG').trim().slice(0, 3)).toUpperCase();
+      newBooking.bookingNumber = `${deptPrefix}-${dStr}-${Math.floor(1000 + Math.random() * 9000)}`;
+    }
 
-  const creatorUser = (req.body._user as any) || {};
-  const actorId = creatorUser.username || creatorUser.id || newBooking.createdById || newBooking.bookerUsername || newBooking.department || 'user';
-  const actorName = creatorUser.name || newBooking.createdByName || newBooking.bookerName || 'Pengguna';
-  const actorDept = creatorUser.department || newBooking.createdByDepartment || newBooking.department || '-';
-  const actorRole = creatorUser.role || newBooking.createdByRole || 'USER';
-  const nowIso = new Date().toISOString();
+    const creatorUser = (req.body._user as any) || {};
+    const actorId = creatorUser.username || creatorUser.id || newBooking.createdById || newBooking.bookerUsername || newBooking.department || 'user';
+    const actorName = creatorUser.name || newBooking.createdByName || newBooking.bookerName || 'Pengguna';
+    const actorDept = creatorUser.department || newBooking.createdByDepartment || newBooking.department || '-';
+    const actorRole = creatorUser.role || newBooking.createdByRole || 'USER';
+    const nowIso = new Date().toISOString();
 
-  newBooking.createdById = newBooking.createdById || actorId;
-  newBooking.createdByName = newBooking.createdByName || actorName;
-  newBooking.createdByDepartment = newBooking.createdByDepartment || actorDept;
-  newBooking.createdByRole = newBooking.createdByRole || actorRole;
+    newBooking.createdById = newBooking.createdById || actorId;
+    newBooking.createdByName = newBooking.createdByName || actorName;
+    newBooking.createdByDepartment = newBooking.createdByDepartment || actorDept;
+    newBooking.createdByRole = newBooking.createdByRole || actorRole;
 
-  newBooking.lastModifiedById = actorId;
-  newBooking.lastModifiedByName = actorName;
-  newBooking.lastModifiedByDepartment = actorDept;
-  newBooking.lastModifiedByRole = actorRole;
-  newBooking.lastModifiedAt = nowIso;
-  newBooking.lastAction = 'DIBUAT';
+    newBooking.lastModifiedById = actorId;
+    newBooking.lastModifiedByName = actorName;
+    newBooking.lastModifiedByDepartment = actorDept;
+    newBooking.lastModifiedByRole = actorRole;
+    newBooking.lastModifiedAt = nowIso;
+    newBooking.lastAction = 'DIBUAT';
 
-  if (!Array.isArray(newBooking.history)) {
-    newBooking.history = [];
-  }
-  if (newBooking.history.length === 0) {
-    newBooking.history.push({
-      timestamp: nowIso,
-      action: 'DIBUAT',
-      userId: actorId,
-      userName: actorName,
-      userRole: actorRole,
-      userDepartment: actorDept,
-      notes: `Pengajuan booking ${newBooking.bookingNumber}`
-    });
-  }
-  delete newBooking._user;
-
-  const current = readBookings();
-
-  // Server-Side Auto-Interlock Conflict Validation (prevent double-booking)
-  const normLocation = (newBooking.meetingLocation || '').trim().toLowerCase().replace(/\s+/g, ' ');
-  const isNoRoom = !normLocation || normLocation === 'tidak menggunakan ruang meeting';
-  if (!isNoRoom && newBooking.meetingDate && newBooking.startTime && newBooking.endTime) {
-    const toMin = (t: string) => {
-      const [h, m] = (t || '00:00').split(':').map(Number);
-      return (h || 0) * 60 + (m || 0);
-    };
-    const newStart = toMin(newBooking.startTime);
-    const newEnd = toMin(newBooking.endTime);
-
-    const conflict = current.find((b: any) => {
-      if (!b || b.status === 'CANCELLED' || b.id === newBooking.id) return false;
-      if (b.meetingDate !== newBooking.meetingDate) return false;
-      const bLoc = (b.meetingLocation || '').trim().toLowerCase().replace(/\s+/g, ' ');
-      if (bLoc !== normLocation) return false;
-
-      const bStart = toMin(b.startTime);
-      const bEnd = toMin(b.endTime);
-      // Overlap: start1 < end2 && end1 > start2
-      return newStart < bEnd && newEnd > bStart;
-    });
-
-    if (conflict) {
-      return res.status(409).json({
-        error: `Auto-Interlock Aktif: Ruangan "${newBooking.meetingLocation}" sudah terisi agenda "${conflict.meetingTitle}" (${conflict.startTime} - ${conflict.endTime} WIB) pada tanggal ${newBooking.meetingDate} oleh ${conflict.bookerName || conflict.department}. Jadwal bentrok, pengajuan ditolak demi keamanan reservasi.`
+    if (!Array.isArray(newBooking.history)) {
+      newBooking.history = [];
+    }
+    if (newBooking.history.length === 0) {
+      newBooking.history.push({
+        timestamp: nowIso,
+        action: 'DIBUAT',
+        userId: actorId,
+        userName: actorName,
+        userRole: actorRole,
+        userDepartment: actorDept,
+        notes: `Pengajuan booking ${newBooking.bookingNumber}`
       });
     }
-  }
+    delete newBooking._user;
 
-  // Put new booking at the top
-  const updated = [newBooking, ...current.filter((b) => b.id !== newBooking.id)];
-  writeBookings(updated);
+    const current = readBookings();
 
-  // Record audit log to central bank data
-  try {
-    const logItem = {
-      id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-      timestamp: nowIso,
-      userId: actorId,
-      userName: actorName,
-      userDepartment: actorDept,
-      userRole: actorRole,
-      action: 'BOOKING_CREATE',
-      details: `Pengajuan booking rapat baru oleh ${actorName} (${actorId}): ${newBooking.bookingNumber} - "${newBooking.meetingTitle}" (${newBooking.meetingLocation}, ${newBooking.meetingDate} ${newBooking.startTime}-${newBooking.endTime})`,
-      targetId: newBooking.bookingNumber,
-      metadata: {
-        bookingId: newBooking.id,
-        bookingNumber: newBooking.bookingNumber,
-        department: newBooking.department,
-        participantCount: newBooking.participantCount,
-        makanSiang: newBooking.makanSiang,
-        snackRingan: newBooking.snackRingan,
-        snackBerat: newBooking.snackBerat
+    // Server-Side Auto-Interlock Conflict Validation (prevent double-booking)
+    const normLocation = (newBooking.meetingLocation || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    const isNoRoom = !normLocation || normLocation === 'tidak menggunakan ruang meeting';
+    if (!isNoRoom && newBooking.meetingDate && newBooking.startTime && newBooking.endTime) {
+      const toMin = (t: string) => {
+        const [h, m] = (t || '00:00').split(':').map(Number);
+        return (h || 0) * 60 + (m || 0);
+      };
+      const newStart = toMin(newBooking.startTime);
+      const newEnd = toMin(newBooking.endTime);
+
+      const conflict = current.find((b: any) => {
+        if (!b || b.status === 'CANCELLED' || b.id === newBooking.id) return false;
+        if (b.meetingDate !== newBooking.meetingDate) return false;
+        const bLoc = (b.meetingLocation || '').trim().toLowerCase().replace(/\s+/g, ' ');
+        if (bLoc !== normLocation) return false;
+
+        const bStart = toMin(b.startTime);
+        const bEnd = toMin(b.endTime);
+        // Overlap: start1 < end2 && end1 > start2
+        return newStart < bEnd && newEnd > bStart;
+      });
+
+      if (conflict) {
+        return res.status(409).json({
+          error: `Auto-Interlock Aktif: Ruangan "${newBooking.meetingLocation}" sudah terisi agenda "${conflict.meetingTitle}" (${conflict.startTime} - ${conflict.endTime} WIB) pada tanggal ${newBooking.meetingDate} oleh ${conflict.bookerName || conflict.department}. Jadwal bentrok, pengajuan ditolak demi keamanan reservasi.`
+        });
       }
-    };
-    const currentLogs = readActivityLogs();
-    currentLogs.unshift(logItem);
-    writeActivityLogs(currentLogs);
-  } catch (err) {
-    console.error('Error writing booking create audit log:', err);
+    }
+
+    // Put new booking at the top
+    const updated = [newBooking, ...current.filter((b) => b && b.id !== newBooking.id)];
+    writeBookings(updated);
+
+    // Record audit log to central bank data
+    try {
+      const logItem = {
+        id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        timestamp: nowIso,
+        userId: actorId,
+        userName: actorName,
+        userDepartment: actorDept,
+        userRole: actorRole,
+        action: 'BOOKING_CREATE',
+        details: `Pengajuan booking rapat baru oleh ${actorName} (${actorId}): ${newBooking.bookingNumber} - "${newBooking.meetingTitle}" (${newBooking.meetingLocation}, ${newBooking.meetingDate} ${newBooking.startTime}-${newBooking.endTime})`,
+        targetId: newBooking.bookingNumber,
+        metadata: {
+          bookingId: newBooking.id,
+          bookingNumber: newBooking.bookingNumber,
+          department: newBooking.department,
+          participantCount: newBooking.participantCount,
+          makanSiang: newBooking.makanSiang,
+          snackRingan: newBooking.snackRingan,
+          snackBerat: newBooking.snackBerat
+        }
+      };
+      const currentLogs = readActivityLogs();
+      currentLogs.unshift(logItem);
+      writeActivityLogs(currentLogs);
+    } catch (err) {
+      console.error('[API] Error writing booking create audit log:', err);
+    }
+
+    // Send asynchronous notification email to admins safely (non-blocking)
+    try {
+      const host = req.get('host') || 'localhost:3000';
+      const origin = `${req.protocol || 'http'}://${host}`;
+      emailService.sendNewBookingAdminAlert(newBooking, origin).catch((err) => {
+        console.error('[API] Gagal kirim email alert admin:', err);
+      });
+    } catch (emailErr) {
+      console.warn('[API] Non-blocking email dispatch warning:', emailErr);
+    }
+
+    return res.status(201).json(newBooking);
+  } catch (fatalErr: any) {
+    console.error('[API] Fatal error in POST /api/bookings:', fatalErr);
+    return res.status(500).json({
+      error: fatalErr?.message || 'Terjadi kesalahan sistem saat memproses pemesanan rapat'
+    });
   }
-
-  // Send asynchronous notification email to admins
-  const origin = `${req.protocol}://${req.get('host')}`;
-  emailService.sendNewBookingAdminAlert(newBooking, origin).catch((err) => {
-    console.error('[API] Gagal kirim email alert admin:', err);
-  });
-
-  res.status(201).json(newBooking);
 });
 
 // PUT update / approve booking
@@ -735,14 +747,22 @@ app.delete('/api/bookings/:id', (req, res) => {
   res.json({ success: true, deletedId: id });
 });
 
-// POST reset bookings: restores seed bookings while safely preserving all custom bookings submitted by users
+// POST reset bookings: clears all booking data cleanly (fresh start) or optionally seeds dummy data
 app.post('/api/bookings/reset', (req, res) => {
-  const current = readBookings();
-  const seedIds = new Set(SEED_BOOKINGS.map(s => s.id));
-  const userSubmitted = current.filter(b => !seedIds.has(b.id));
-  const preserved = [...userSubmitted, ...SEED_BOOKINGS];
-  writeBookings(preserved);
-  res.json({ success: true, count: preserved.length, preservedCustomCount: userSubmitted.length });
+  const mode = req.body?.mode;
+  if (mode === 'seed') {
+    writeBookings(SEED_BOOKINGS);
+    return res.json({ success: true, count: SEED_BOOKINGS.length, mode: 'seed' });
+  }
+  // Default clean reset: wipe all bookings cleanly (fresh app)
+  writeBookings([]);
+  res.json({ success: true, count: 0, mode: 'clean' });
+});
+
+// POST clear all bookings explicitly
+app.post('/api/bookings/clear-all', (req, res) => {
+  writeBookings([]);
+  res.json({ success: true, count: 0, message: 'Semua data booking berhasil di-reset bersih' });
 });
 
 // POST sync multiple bookings (e.g. initial upload or bulk sync)
@@ -1740,6 +1760,18 @@ app.post('/api/bank-data/restore', (req, res) => {
   } catch (err) {
     res.status(500).json({ error: 'Gagal memulihkan cadangan bank data' });
   }
+});
+
+// Global Express JSON Error Handler
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error('[Server Error Handler]:', err);
+  if (res.headersSent) {
+    return next(err);
+  }
+  const status = typeof err?.status === 'number' ? err.status : (typeof err?.statusCode === 'number' ? err.statusCode : 500);
+  res.status(status).json({
+    error: err?.message || 'Terjadi kesalahan pada server saat memproses permintaan'
+  });
 });
 
 // ==========================================

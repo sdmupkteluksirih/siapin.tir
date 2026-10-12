@@ -1,5 +1,56 @@
 [
   {
+    "id": "log-1791789497820-krdhb",
+    "timestamp": "2026-10-12T07:18:17.819Z",
+    "userId": "Operasi",
+    "userName": "Budi Santoso",
+    "userDepartment": "Operasi",
+    "userRole": "USER",
+    "action": "BOOKING_CREATE",
+    "details": "Pengajuan booking rapat baru oleh Budi Santoso (Operasi): OPE-20261015-6095 - \"Rapat Koordinasi Perdana Fresh\" (War room lt. 3, 2026-10-15 09:00-10:30)",
+    "targetId": "OPE-20261015-6095",
+    "metadata": {
+      "bookingId": "b-prod-test-01",
+      "bookingNumber": "OPE-20261015-6095",
+      "department": "Operasi",
+      "participantCount": 10,
+      "makanSiang": "Tidak",
+      "snackRingan": "Snack Mix Basah Kering",
+      "snackBerat": "Tidak Ada"
+    }
+  },
+  {
+    "id": "log-1791789472095",
+    "timestamp": "2026-10-12T07:17:52.095Z",
+    "userId": "system",
+    "userName": "Administrator",
+    "userDepartment": "Administrasi",
+    "userRole": "ADMIN",
+    "action": "SYSTEM_SETTINGS",
+    "details": "Data booking berhasil di-reset bersih (fresh install). Aplikasi siap digunakan untuk reservasi baru.",
+    "targetId": "SYSTEM-RESET"
+  },
+  {
+    "id": "log-1791788969245-1t88m",
+    "timestamp": "2026-10-12T07:09:29.242Z",
+    "userId": "Operasi",
+    "userName": "Budi",
+    "userDepartment": "Operasi",
+    "userRole": "USER",
+    "action": "BOOKING_CREATE",
+    "details": "Pengajuan booking rapat baru oleh Budi (Operasi): OPE-20261015-7512 - \"Rapat Tes\" (Ruang Rapat Lantai 2, 2026-10-15 09:00-10:00)",
+    "targetId": "OPE-20261015-7512",
+    "metadata": {
+      "bookingId": "test-1",
+      "bookingNumber": "OPE-20261015-7512",
+      "department": "Operasi",
+      "participantCount": 10,
+      "makanSiang": "Tidak",
+      "snackRingan": "Tidak Ada",
+      "snackBerat": "Tidak Ada"
+    }
+  },
+  {
     "id": "log-1790150201394-sj23p",
     "timestamp": "2026-09-23T07:56:41.394Z",
     "userId": "keu.mum",

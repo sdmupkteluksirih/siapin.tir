@@ -194,16 +194,33 @@ export const BookingWizard: React.FC<BookingWizardProps> = ({
         <div className="p-4 rounded-2xl bg-rose-600 text-white shadow-lg flex items-start gap-3.5 animate-in fade-in slide-in-from-top-2 border border-rose-500">
           <ShieldAlert className="w-5 h-5 text-amber-200 shrink-0 mt-0.5" />
           <div className="flex-1 text-xs">
-            <div className="font-bold text-sm flex items-center gap-2">
-              <span>Peringatan Auto-Interlock / Pengajuan Gagal</span>
-              <span className="px-2 py-0.5 rounded bg-rose-800 text-[10px] font-mono uppercase tracking-wider font-bold">Terkunci</span>
+            <div className="font-bold text-sm flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span>{submitError.toLowerCase().includes('interlock') || submitError.toLowerCase().includes('bentrok') ? 'Peringatan Auto-Interlock (Jadwal Bentrok)' : 'Kendala Koneksi Server'}</span>
+                <span className="px-2 py-0.5 rounded bg-rose-800 text-[10px] font-mono uppercase tracking-wider font-bold">
+                  {submitError.toLowerCase().includes('interlock') || submitError.toLowerCase().includes('bentrok') ? 'Terkunci' : 'Perlu Dicoba Lagi'}
+                </span>
+              </div>
             </div>
-            <p className="text-rose-100 mt-1 leading-relaxed">
+            <p className="text-rose-100 mt-1.5 leading-relaxed font-medium">
               {submitError}
             </p>
-            <p className="text-[11px] text-amber-200 mt-1.5 font-medium">
-              💡 Silakan pilih ruangan rapat lain atau sesuaikan jam rapat Anda di formulir di bawah ini.
-            </p>
+            {submitError.toLowerCase().includes('interlock') || submitError.toLowerCase().includes('bentrok') ? (
+              <p className="text-[11px] text-amber-200 mt-1.5 font-medium">
+                💡 Silakan pilih ruangan rapat lain atau sesuaikan jam rapat Anda pada form Langkah 1.
+              </p>
+            ) : (
+              <div className="mt-2.5 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleConfirmSubmit}
+                  disabled={isSubmitting}
+                  className="px-3.5 py-1.5 rounded-lg bg-white text-rose-700 font-bold text-xs hover:bg-rose-50 transition shadow-xs cursor-pointer disabled:opacity-50"
+                >
+                  {isSubmitting ? 'Mengirim Ulang...' : '🔄 Coba Kirim Ulang Sekarang'}
+                </button>
+              </div>
+            )}
           </div>
           <button
             type="button"

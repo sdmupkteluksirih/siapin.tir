@@ -7,551 +7,8 @@ import { sseClient } from './sseClient';
 const STORAGE_KEY = 'meeting_snack_bookings_v4';
 const LISTEN_EVENT = 'meeting_bookings_changed';
 
-// Initial realistic Indonesian corporate seed data for today (2026-08-20) and surrounding dates
-const INITIAL_BOOKINGS: Booking[] = [
-  {
-    id: 'b-001',
-    bookingNumber: 'OPR-20260820-0001',
-    meetingDate: '2026-08-20',
-    startTime: '09:00',
-    durationHours: 2,
-    endTime: '11:00',
-    snackRingan: 'Snack Mix Basah Kering',
-    snackBerat: 'Tidak Ada',
-    makanSiang: 'Iya',
-    bookerName: 'Budi Santoso',
-    department: 'Operasi',
-    whatsapp: '081234567890',
-    meetingTitle: 'Meeting Koordinasi Operasional Unit & Vendor Eksternal',
-    meetingLocation: 'War room lt. 3',
-    participantCount: 20,
-    organizationOrGuests: 'PT PLN Nusantara Power & PT Cogindo DayaBersama',
-    invitationLetter: {
-      name: 'Surat_Undangan_Rapat_Koordinasi_PLN.pdf',
-      size: 425600,
-      type: 'application/pdf'
-    },
-    notes: 'Mohon siapkan proyektor HDMI dan sound system.',
-    status: 'CONFIRMED',
-    createdAt: '2026-08-19T08:30:00.000Z'
-  },
-  {
-    id: 'b-002',
-    bookingNumber: 'KSA-20260820-0001',
-    meetingDate: '2026-08-20',
-    startTime: '10:30',
-    durationHours: 1.5,
-    endTime: '12:00',
-    snackRingan: 'Snack Sehat Rebusan',
-    snackBerat: 'Tidak Ada',
-    makanSiang: 'Tidak',
-    bookerName: 'Siti Rahmawati',
-    department: 'Keuangan & Umum',
-    whatsapp: '081398765432',
-    meetingTitle: 'Evaluasi Anggaran & Administrasi Umum',
-    meetingLocation: 'Room meeting KU lt. 1',
-    participantCount: 30,
-    organizationOrGuests: 'Internal Divisi Keuangan & Bagian Akuntansi',
-    notes: 'Snack disajikan tepat pukul 10:45.',
-    status: 'BOOKED',
-    createdAt: '2026-08-19T10:15:00.000Z'
-  },
-  {
-    id: 'b-003',
-    bookingNumber: 'HAR-20260820-0001',
-    meetingDate: '2026-08-20',
-    startTime: '13:00',
-    durationHours: 3,
-    endTime: '16:00',
-    snackRingan: 'Tidak Ada',
-    snackBerat: 'Baso',
-    makanSiang: 'Iya',
-    bookerName: 'Hendra Gunawan',
-    department: 'Pemeliharaan',
-    whatsapp: '081765432109',
-    meetingTitle: 'Preventive Maintenance Planning & Review',
-    meetingLocation: 'Room meeting Har',
-    participantCount: 40,
-    organizationOrGuests: 'Tim Ahli Boiler & Turbin (Mitra OEM)',
-    invitationLetter: {
-      name: 'Izin_Kunjungan_Teknisi_Mitra_OEM.pdf',
-      size: 614400,
-      type: 'application/pdf'
-    },
-    notes: 'Makan siang disajikan jam 12:30 sebelum sesi dimulai.',
-    status: 'CONFIRMED',
-    createdAt: '2026-08-18T14:20:00.000Z'
-  },
-  {
-    id: 'b-004',
-    bookingNumber: 'ENJ-20260820-0001',
-    meetingDate: '2026-08-20',
-    startTime: '14:00',
-    durationHours: 2,
-    endTime: '16:00',
-    snackRingan: 'Snack Mix Basah Kering',
-    snackBerat: 'Baso',
-    makanSiang: 'Iya',
-    bookerName: 'Dewi Lestari',
-    department: 'Enjiniring',
-    whatsapp: '081299887766',
-    meetingTitle: 'Kajian Teknis & Evaluasi Efisiensi Termal',
-    meetingLocation: 'Ruang integritas lt. 2',
-    participantCount: 30,
-    notes: 'Perlu tambahan flipchart dan spidol.',
-    status: 'COMPLETED',
-    createdAt: '2026-08-17T09:00:00.000Z'
-  },
-  {
-    id: 'b-005',
-    bookingNumber: 'CAH-20260820-0001',
-    meetingDate: '2026-08-20',
-    startTime: '15:30',
-    durationHours: 1.5,
-    endTime: '17:00',
-    snackRingan: 'Snack Sehat Rebusan',
-    snackBerat: 'Soto',
-    makanSiang: 'Iya',
-    bookerName: 'Agus Setiawan',
-    department: 'Coal & Ash Handling',
-    whatsapp: '081311223344',
-    meetingTitle: 'Briefing Stockpile & Distribusi Batubara',
-    meetingLocation: 'War room lt. 3',
-    participantCount: 20,
-    notes: 'Snack sehat rebusan tanpa kacang-kacangan.',
-    status: 'CONFIRMED',
-    createdAt: '2026-08-19T11:45:00.000Z'
-  },
-  {
-    id: 'b-006',
-    bookingNumber: 'KKK-20260820-0001',
-    meetingDate: '2026-08-20',
-    startTime: '16:00',
-    durationHours: 1,
-    endTime: '17:00',
-    snackRingan: 'Snack Sehat Rebusan',
-    snackBerat: 'Baso',
-    makanSiang: 'Iya',
-    bookerName: 'Rina Kusuma',
-    department: 'K3 & Keamanan',
-    whatsapp: '081555443322',
-    meetingTitle: 'Sosialisasi Safety Golden Rules & K3',
-    meetingLocation: 'Ruang integritas lt. 2',
-    participantCount: 15,
-    notes: 'Rapat internal K3.',
-    status: 'BOOKED',
-    createdAt: '2026-08-19T16:10:00.000Z'
-  },
-  {
-    id: 'b-007',
-    bookingNumber: 'LIN-20260820-0001',
-    meetingDate: '2026-08-20',
-    startTime: '08:30',
-    durationHours: 1,
-    endTime: '09:30',
-    snackRingan: 'Snack Mix Basah Kering',
-    snackBerat: 'Soto',
-    makanSiang: 'Tidak',
-    bookerName: 'Farhan Maulana',
-    department: 'Lingkungan',
-    whatsapp: '081877665544',
-    meetingTitle: 'Monitoring Baku Mutu Emisi & Limbah',
-    meetingLocation: 'Room meeting KU lt. 1',
-    participantCount: 15,
-    notes: 'Dibatalkan karena agenda inspeksi lapangan mendadak.',
-    status: 'CANCELLED',
-    createdAt: '2026-08-18T10:00:00.000Z'
-  },
-  {
-    id: 'b-008',
-    bookingNumber: 'DAN-20260821-0001',
-    meetingDate: '2026-08-21',
-    startTime: '09:00',
-    durationHours: 3,
-    endTime: '12:00',
-    snackRingan: 'Snack Mix Basah Kering',
-    snackBerat: 'Sate Padang',
-    makanSiang: 'Iya',
-    bookerName: 'Arif Prasetyo',
-    department: 'Pengadaan',
-    whatsapp: '081122334455',
-    meetingTitle: 'Evaluasi Penawaran & Aanwijzing Vendor Batubara',
-    meetingLocation: 'War room lt. 3',
-    participantCount: 25,
-    notes: 'Sajikan teh hangat, kopi, dan air mineral.',
-    status: 'CONFIRMED',
-    createdAt: '2026-08-19T13:00:00.000Z'
-  },
-  {
-    id: 'b-009',
-    bookingNumber: 'ENJ-20260821-0002',
-    meetingDate: '2026-08-21',
-    startTime: '10:00',
-    durationHours: 2,
-    endTime: '12:00',
-    snackRingan: 'Snack Sehat Rebusan',
-    snackBerat: 'Baso',
-    makanSiang: 'Iya',
-    bookerName: 'Nurul Hidayah',
-    department: 'Enjiniring',
-    whatsapp: '081233445566',
-    meetingTitle: 'Review Reliability & Efisiensi Pembangkit',
-    meetingLocation: 'Room meeting Har',
-    participantCount: 35,
-    notes: 'Sound system disiapkan untuk microfon 2 buah.',
-    status: 'CONFIRMED',
-    createdAt: '2026-08-19T15:20:00.000Z'
-  },
-  {
-    id: 'b-009b',
-    bookingNumber: 'KSA-20260821-0003',
-    meetingDate: '2026-08-21',
-    startTime: '13:30',
-    durationHours: 2.5,
-    endTime: '16:00',
-    snackRingan: 'Snack Mix Basah Kering',
-    snackBerat: 'Tidak Ada',
-    makanSiang: 'Tidak',
-    bookerName: 'Bambang Irawan',
-    department: 'Keuangan & Umum',
-    whatsapp: '081377889900',
-    meetingTitle: 'Rapat Penataan Aset & Sarana Prasarana Gedung',
-    meetingLocation: 'Ruang integritas lt. 2',
-    participantCount: 20,
-    notes: 'Perlu kabel roll dan sambungan proyektor.',
-    status: 'BOOKED',
-    createdAt: '2026-08-20T08:00:00.000Z'
-  },
-  {
-    id: 'b-009c',
-    bookingNumber: 'OPR-20260822-0001',
-    meetingDate: '2026-08-22',
-    startTime: '08:30',
-    durationHours: 2,
-    endTime: '10:30',
-    snackRingan: 'Snack Sehat Rebusan',
-    snackBerat: 'Tidak Ada',
-    makanSiang: 'Tidak',
-    bookerName: 'Wahyu Hidayat',
-    department: 'Operasi',
-    whatsapp: '081288776655',
-    meetingTitle: 'Daily Morning Briefing Tim Shift & Kesiapan Daya',
-    meetingLocation: 'War room lt. 3',
-    participantCount: 18,
-    notes: 'Briefing rutin akhir pekan.',
-    status: 'CONFIRMED',
-    createdAt: '2026-08-21T07:30:00.000Z'
-  },
-  {
-    id: 'b-009d',
-    bookingNumber: 'HAR-20260824-0001',
-    meetingDate: '2026-08-24',
-    startTime: '09:00',
-    durationHours: 3,
-    endTime: '12:00',
-    snackRingan: 'Snack Mix Basah Kering',
-    snackBerat: 'Soto',
-    makanSiang: 'Iya',
-    bookerName: 'Ilham Syahputra',
-    department: 'Pemeliharaan',
-    whatsapp: '081366554433',
-    meetingTitle: 'Kickoff Rencana Pemeliharaan Periodik Unit 2',
-    meetingLocation: 'Room meeting Har',
-    participantCount: 30,
-    notes: 'Sediakan microphone meja dan proyektor.',
-    status: 'CONFIRMED',
-    createdAt: '2026-08-22T10:00:00.000Z'
-  },
-  {
-    id: 'b-009e',
-    bookingNumber: 'KKK-20260824-0002',
-    meetingDate: '2026-08-24',
-    startTime: '13:00',
-    durationHours: 2,
-    endTime: '15:00',
-    snackRingan: 'Snack Sehat Rebusan',
-    snackBerat: 'Tidak Ada',
-    makanSiang: 'Tidak',
-    bookerName: 'Rina Kusuma',
-    department: 'K3 & Keamanan',
-    whatsapp: '081555443322',
-    meetingTitle: 'Audit SMK3 & Peninjauan Jalur Evakuasi Kebakaran',
-    meetingLocation: 'Ruang integritas lt. 2',
-    participantCount: 25,
-    notes: 'Ruangan disterilkan 15 menit sebelum acara.',
-    status: 'CONFIRMED',
-    createdAt: '2026-08-23T09:00:00.000Z'
-  },
-  {
-    id: 'b-010',
-    bookingNumber: 'OPR-20260825-0001',
-    meetingDate: '2026-08-25',
-    startTime: '09:00',
-    durationHours: 2,
-    endTime: '11:00',
-    snackRingan: 'Snack Mix Basah Kering',
-    snackBerat: 'Tidak Ada',
-    makanSiang: 'Iya',
-    bookerName: 'Agus Purnomo',
-    department: 'Operasi',
-    whatsapp: '081234567891',
-    meetingTitle: 'Rapat Koordinasi Efisiensi Boiler & Penanganan Batubara',
-    meetingLocation: 'War room lt. 3',
-    participantCount: 25,
-    organizationOrGuests: 'Tim Operasi PLTU & Vendor Coal Handling',
-    notes: 'Mohon proyektor dan mic wireless disiapkan.',
-    status: 'CONFIRMED',
-    createdAt: '2026-08-24T08:00:00.000Z'
-  },
-  {
-    id: 'b-011',
-    bookingNumber: 'KSA-20260825-0002',
-    meetingDate: '2026-08-25',
-    startTime: '10:00',
-    durationHours: 2,
-    endTime: '12:00',
-    snackRingan: 'Snack Sehat Rebusan',
-    snackBerat: 'Soto',
-    makanSiang: 'Iya',
-    bookerName: 'Maya Indriani',
-    department: 'Keuangan & Umum',
-    whatsapp: '081399887711',
-    meetingTitle: 'Sosialisasi Kebijakan Anggaran Semester II & Audit Internal',
-    meetingLocation: 'Room meeting KU lt. 1',
-    participantCount: 30,
-    organizationOrGuests: 'Divisi Keuangan & Tim SPI Kantor Pusat',
-    notes: 'Sajikan snack sehat rebusan pukul 10:15.',
-    status: 'BOOKED',
-    createdAt: '2026-08-24T09:30:00.000Z'
-  },
-  {
-    id: 'b-012',
-    bookingNumber: 'HAR-20260825-0003',
-    meetingDate: '2026-08-25',
-    startTime: '13:30',
-    durationHours: 2.5,
-    endTime: '16:00',
-    snackRingan: 'Snack Mix Basah Kering',
-    snackBerat: 'Baso',
-    makanSiang: 'Tidak',
-    bookerName: 'Rudi Hartono',
-    department: 'Pemeliharaan',
-    whatsapp: '081711223344',
-    meetingTitle: 'Technical Review Overhaul Turbin Generator Unit 1',
-    meetingLocation: 'Room meeting Har',
-    participantCount: 40,
-    organizationOrGuests: 'Tim Engineer Overhaul & Tenaga Ahli Siemens',
-    notes: 'Layar proyektor lebar digunakan untuk paparan diagram teknik.',
-    status: 'CONFIRMED',
-    createdAt: '2026-08-23T14:15:00.000Z'
-  },
-  {
-    id: 'b-013',
-    bookingNumber: 'ENJ-20260825-0004',
-    meetingDate: '2026-08-25',
-    startTime: '14:00',
-    durationHours: 2,
-    endTime: '16:00',
-    snackRingan: 'Snack Mix Basah Kering',
-    snackBerat: 'Tidak Ada',
-    makanSiang: 'Tidak',
-    bookerName: 'Fajar Nugraha',
-    department: 'Enjiniring',
-    whatsapp: '081544332211',
-    meetingTitle: 'Kajian Modifikasi Cooling Water System & FGD',
-    meetingLocation: 'Ruang integritas lt. 2',
-    participantCount: 20,
-    notes: 'Diskusi teknis tertutup divisi enjiniring.',
-    status: 'CONFIRMED',
-    createdAt: '2026-08-24T11:00:00.000Z'
-  },
-  {
-    id: 'b-014',
-    bookingNumber: 'CAH-20260826-0001',
-    meetingDate: '2026-08-26',
-    startTime: '09:00',
-    durationHours: 2,
-    endTime: '11:00',
-    snackRingan: 'Snack Mix Basah Kering',
-    snackBerat: 'Tidak Ada',
-    makanSiang: 'Tidak',
-    bookerName: 'Doni Pratama',
-    department: 'Coal & Ash Handling',
-    whatsapp: '081266778899',
-    meetingTitle: 'Evaluasi Operasional Jetty & Unloading Tongkang',
-    meetingLocation: 'War room lt. 3',
-    participantCount: 20,
-    notes: 'Sediakan layar proyektor untuk presentasi data logistik.',
-    status: 'CONFIRMED',
-    createdAt: '2026-08-25T08:30:00.000Z'
-  },
-  {
-    id: 'b-015',
-    bookingNumber: 'LIN-20260826-0002',
-    meetingDate: '2026-08-26',
-    startTime: '10:30',
-    durationHours: 2,
-    endTime: '12:30',
-    snackRingan: 'Snack Sehat Rebusan',
-    snackBerat: 'Soto',
-    makanSiang: 'Iya',
-    bookerName: 'Farhan Maulana',
-    department: 'Lingkungan',
-    whatsapp: '081877665544',
-    meetingTitle: 'Sosialisasi Program Pengelolaan FABA (Fly Ash & Bottom Ash)',
-    meetingLocation: 'Room meeting KU lt. 1',
-    participantCount: 30,
-    organizationOrGuests: 'Dinas Lingkungan Hidup Prov. Sumatera Barat',
-    notes: 'Makan siang prasmanan disiapkan jam 12:00.',
-    status: 'CONFIRMED',
-    createdAt: '2026-08-25T10:00:00.000Z'
-  },
-  {
-    id: 'b-016',
-    bookingNumber: 'OPR-20260827-0001',
-    meetingDate: '2026-08-27',
-    startTime: '09:00',
-    durationHours: 3,
-    endTime: '12:00',
-    snackRingan: 'Snack Mix Basah Kering',
-    snackBerat: 'Baso',
-    makanSiang: 'Iya',
-    bookerName: 'Budi Santoso',
-    department: 'Operasi',
-    whatsapp: '081234567890',
-    meetingTitle: 'Simulasi Tanggap Darurat Blackout & Kesiapan Sistem Kelistrikan',
-    meetingLocation: 'War room lt. 3',
-    participantCount: 25,
-    organizationOrGuests: 'Tim Dispatcher UIP3B Sumatera',
-    notes: 'Video conference online terhubung dengan kantor pusat.',
-    status: 'CONFIRMED',
-    createdAt: '2026-08-26T09:00:00.000Z'
-  },
-  {
-    id: 'b-017',
-    bookingNumber: 'HAR-20260827-0002',
-    meetingDate: '2026-08-27',
-    startTime: '14:00',
-    durationHours: 2,
-    endTime: '16:00',
-    snackRingan: 'Snack Sehat Rebusan',
-    snackBerat: 'Tidak Ada',
-    makanSiang: 'Tidak',
-    bookerName: 'Hendra Gunawan',
-    department: 'Pemeliharaan',
-    whatsapp: '081765432109',
-    meetingTitle: 'Evaluasi Kinerja Pompa Feedwater & Condensate',
-    meetingLocation: 'Room meeting Har',
-    participantCount: 30,
-    notes: 'Siapkan whiteboard tambahan.',
-    status: 'BOOKED',
-    createdAt: '2026-08-26T11:30:00.000Z'
-  },
-  {
-    id: 'b-018',
-    bookingNumber: 'DAN-20260828-0001',
-    meetingDate: '2026-08-28',
-    startTime: '09:30',
-    durationHours: 2.5,
-    endTime: '12:00',
-    snackRingan: 'Snack Mix Basah Kering',
-    snackBerat: 'Soto',
-    makanSiang: 'Iya',
-    bookerName: 'Arif Prasetyo',
-    department: 'Pengadaan',
-    whatsapp: '081122334455',
-    meetingTitle: 'Klarifikasi & Negosiasi Pengadaan Sparepart Turbin',
-    meetingLocation: 'Room meeting KU lt. 1',
-    participantCount: 20,
-    organizationOrGuests: 'Mitra Rekanan PT Nusantara Power Services',
-    notes: 'Ruang meeting harap dipersiapkan dingin sebelum jam 09:15.',
-    status: 'CONFIRMED',
-    createdAt: '2026-08-27T08:00:00.000Z'
-  },
-  {
-    id: 'b-019',
-    bookingNumber: 'ENJ-20260828-0002',
-    meetingDate: '2026-08-28',
-    startTime: '14:00',
-    durationHours: 2,
-    endTime: '16:00',
-    snackRingan: 'Snack Sehat Rebusan',
-    snackBerat: 'Tidak Ada',
-    makanSiang: 'Tidak',
-    bookerName: 'Dewi Lestari',
-    department: 'Enjiniring',
-    whatsapp: '081299887766',
-    meetingTitle: 'Monthly Review Performance & Heat Rate Pembangkit',
-    meetingLocation: 'Ruang integritas lt. 2',
-    participantCount: 25,
-    notes: 'Disajikan kopi dan teh hangat.',
-    status: 'CONFIRMED',
-    createdAt: '2026-08-27T10:00:00.000Z'
-  },
-  {
-    id: 'b-keu-20260908-01',
-    bookingNumber: 'KSA-20260908-0001',
-    meetingDate: '2026-09-08',
-    startTime: '09:30',
-    durationHours: 2,
-    endTime: '11:30',
-    snackRingan: 'Snack Mix Basah Kering',
-    snackBerat: 'Tidak Ada',
-    makanSiang: 'Iya',
-    bookerName: 'Siti Rahmawati (Keuangan)',
-    department: 'Keuangan & Umum',
-    whatsapp: '081398765432',
-    meetingTitle: 'Rapat Koordinasi Anggaran & Evaluasi Keuangan Semester II',
-    meetingLocation: 'Room meeting KU lt. 1',
-    participantCount: 20,
-    organizationOrGuests: 'Tim Anggaran & Akuntansi PLTU Teluk Sirih',
-    notes: 'Mohon proyektor dan snack disiapkan sebelum jam 09:30.',
-    status: 'BOOKED',
-    createdAt: '2026-09-08T02:30:00.000Z'
-  },
-  {
-    id: 'b-adm-20260909-01',
-    bookingNumber: 'ADM-20260909-0001',
-    meetingDate: '2026-09-09',
-    startTime: '09:00',
-    durationHours: 2,
-    endTime: '11:00',
-    snackRingan: 'Snack Mix Basah Kering',
-    snackBerat: 'Tidak Ada',
-    makanSiang: 'Iya',
-    bookerName: 'Admin SI APIN',
-    department: 'Operasi',
-    whatsapp: '081266554433',
-    meetingTitle: 'Review Program Kerja & Evaluasi Fasilitas Operasional PLTU',
-    meetingLocation: 'Ruang Rapat Lantai 2 Kantor Utama',
-    participantCount: 25,
-    organizationOrGuests: 'Manajemen & Tim Operasional PLTU',
-    notes: 'Kegiatan pagi: evaluasi fasilitas dan kesiapan unit.',
-    status: 'CONFIRMED',
-    createdAt: '2026-09-08T03:00:00.000Z'
-  },
-  {
-    id: 'b-adm-20260909-02',
-    bookingNumber: 'ADM-20260909-0002',
-    meetingDate: '2026-09-09',
-    startTime: '13:30',
-    durationHours: 2,
-    endTime: '15:30',
-    snackRingan: 'Snack Sehat Rebusan',
-    snackBerat: 'Soto',
-    makanSiang: 'Tidak',
-    bookerName: 'Admin SI APIN',
-    department: 'Operasi',
-    whatsapp: '081266554433',
-    meetingTitle: 'Sosialisasi Standar Pelayanan & Housekeeping Area PLTU Teluk Sirih',
-    meetingLocation: 'Ruang Rapat Lantai 1',
-    participantCount: 30,
-    organizationOrGuests: 'Tim Administrasi & Pelayanan Fasilitas',
-    notes: 'Kegiatan siang: snack sehat dan soto disiapkan pukul 13:15.',
-    status: 'CONFIRMED',
-    createdAt: '2026-09-08T03:15:00.000Z'
-  }
-];
+// Initial booking list defaults to empty (clean state for fresh production deployment)
+const INITIAL_BOOKINGS: Booking[] = [];
 
 // BroadcastChannel for instant zero-latency cross-tab communication
 const broadcastChannel = typeof window !== 'undefined' && 'BroadcastChannel' in window 
@@ -725,7 +182,7 @@ if (typeof window !== 'undefined') {
 
 export const bookingStorage = {
   getAll(): Booking[] {
-    if (typeof window === 'undefined') return INITIAL_BOOKINGS;
+    if (typeof window === 'undefined') return [];
 
     // Return cached bookings if already loaded
     if (cachedBookings && Array.isArray(cachedBookings)) {
@@ -734,32 +191,23 @@ export const bookingStorage = {
 
     const stored = localStorage.getItem(STORAGE_KEY);
     if (!stored) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_BOOKINGS));
-      cachedBookings = INITIAL_BOOKINGS;
-      return INITIAL_BOOKINGS;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
+      cachedBookings = [];
+      return [];
     }
     try {
       const parsed: Booking[] = JSON.parse(stored);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        // Ensure all default seeds are present if not already added
-        const existingIds = new Set(parsed.map(b => b.id));
-        const missingSeeds = INITIAL_BOOKINGS.filter(seed => !existingIds.has(seed.id));
-        if (missingSeeds.length > 0) {
-          const merged = [...parsed, ...missingSeeds];
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
-          cachedBookings = merged;
-          return merged;
-        }
+      if (Array.isArray(parsed)) {
         cachedBookings = parsed;
         return parsed;
       }
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_BOOKINGS));
-      cachedBookings = INITIAL_BOOKINGS;
-      return INITIAL_BOOKINGS;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
+      cachedBookings = [];
+      return [];
     } catch {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_BOOKINGS));
-      cachedBookings = INITIAL_BOOKINGS;
-      return INITIAL_BOOKINGS;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
+      cachedBookings = [];
+      return [];
     }
   },
 
@@ -949,11 +397,13 @@ export const bookingStorage = {
       ]
     };
 
-    try {
-      const res = await fetch('/api/bookings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+    // Resilient server submission with automatic retry (up to 2 attempts) to handle cold starts
+    let lastError: any = null;
+    const maxAttempts = 2;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const payload = JSON.stringify({
           ...newBooking,
           _user: currentUser ? {
             username: currentUser.username,
@@ -961,43 +411,74 @@ export const bookingStorage = {
             department: currentUser.department,
             role: currentUser.role
           } : undefined
-        })
-      });
+        });
 
-      if (res.status === 409) {
-        // Auto-Interlock Conflict detected by server!
-        const errJson = await res.json().catch(() => ({}));
-        // Immediately refresh local bookings so colliding booking is shown in UI
-        await fetchBookingsFromServer(false);
-        throw new Error(errJson.error || 'Ruangan ini sudah dipesan untuk agenda lain pada jam tersebut (Auto-Interlock Aktif).');
+        const res = await fetch('/api/bookings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: payload
+        });
+
+        if (res.status === 409) {
+          // Auto-Interlock Conflict detected by server!
+          const errJson = await res.json().catch(() => ({}));
+          await fetchBookingsFromServer(false);
+          throw new Error(errJson.error || 'Ruangan ini sudah dipesan untuk agenda lain pada jam tersebut (Auto-Interlock Aktif).');
+        }
+
+        if (!res.ok) {
+          let errorText = '';
+          try {
+            const errJson = await res.json();
+            errorText = errJson.error || errJson.message || '';
+          } catch {
+            try {
+              const rawTxt = await res.text();
+              if (rawTxt && rawTxt.length < 200 && !rawTxt.includes('<html')) {
+                errorText = rawTxt;
+              }
+            } catch {}
+          }
+
+          if (res.status >= 500 && attempt < maxAttempts) {
+            // Server was cold-starting or restarting, wait 1 second and retry once
+            await new Promise(r => setTimeout(r, 1000));
+            continue;
+          }
+
+          throw new Error(errorText || `Server sedang menyiapkan sistem (${res.status}). Silakan coba klik tombol Konfirmasi sekali lagi.`);
+        }
+
+        const savedBooking: Booking = await res.json();
+        
+        // Update memory & local storage with server-confirmed booking
+        const curList = cachedBookings || all;
+        const updated = [savedBooking, ...curList.filter(b => b.id !== savedBooking.id)];
+        cachedBookings = updated;
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+        } catch {}
+        notifySubscribers();
+
+        // Instantly notify other listeners & tabs
+        try {
+          sseClient.notifyLocal('bookings_changed', savedBooking);
+        } catch {}
+
+        return savedBooking;
+      } catch (err: any) {
+        lastError = err;
+        // If conflict or validation error, re-throw immediately without retry
+        if (err.message && (err.message.includes('Auto-Interlock') || err.message.includes('tidak lengkap'))) {
+          throw err;
+        }
+        if (attempt < maxAttempts) {
+          await new Promise(r => setTimeout(r, 1000));
+        }
       }
-
-      if (!res.ok) {
-        const errJson = await res.json().catch(() => ({}));
-        throw new Error(errJson.error || `Server error (${res.status}) saat menyimpan booking`);
-      }
-
-      const savedBooking: Booking = await res.json();
-      
-      // Update memory & local storage with server-confirmed booking
-      const curList = cachedBookings || all;
-      const updated = [savedBooking, ...curList.filter(b => b.id !== savedBooking.id)];
-      cachedBookings = updated;
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-      } catch {}
-      notifySubscribers();
-
-      // Instantly notify other listeners & tabs
-      try {
-        sseClient.notifyLocal('bookings_changed', savedBooking);
-      } catch {}
-
-      return savedBooking;
-    } catch (err: any) {
-      // Re-throw all validation & server errors so user and UI are aware and not misled
-      throw err;
     }
+
+    throw lastError || new Error('Gagal menghubungi server sistem. Silakan periksa koneksi dan coba lagi.');
   },
 
   updateStatus(id: string, newStatus: BookingStatus, notes?: string, approvedBy?: string): Booking | undefined {
@@ -1288,23 +769,35 @@ export const bookingStorage = {
   },
 
   reset(): void {
-    const all = this.getAll();
-    const seedIds = new Set(INITIAL_BOOKINGS.map(s => s.id));
-    const userSubmitted = all.filter(b => !seedIds.has(b.id));
-    const preserved = [...userSubmitted, ...INITIAL_BOOKINGS];
-    cachedBookings = preserved;
+    cachedBookings = [];
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(preserved));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
     } catch {
       // Ignore quota errors
     }
     notifySubscribers();
 
-    // Reset on central server asynchronously while protecting submitted bookings
+    // Reset on central server cleanly
     fetch('/api/bookings/reset', {
-      method: 'POST'
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode: 'clean' })
     }).catch((err) => {
       console.warn('[SI APIN] Gagal reset di server:', err);
+    });
+  },
+
+  async clearAllBookingsAsync(): Promise<void> {
+    cachedBookings = [];
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
+    } catch {}
+    notifySubscribers();
+
+    await fetch('/api/bookings/clear-all', {
+      method: 'POST'
+    }).catch((err) => {
+      console.warn('[SI APIN] Gagal clear-all di server:', err);
     });
   },
 
