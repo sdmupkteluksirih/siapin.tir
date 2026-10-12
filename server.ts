@@ -413,16 +413,47 @@ app.get('/api/bookings', (req, res) => {
 
 // POST create booking
 app.post('/api/bookings', (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
   try {
-    const newBooking = req.body;
-    if (!newBooking || !newBooking.id || !newBooking.meetingTitle) {
-      return res.status(400).json({ error: 'Data booking tidak lengkap. Judul agenda rapat wajib diisi.' });
+    const newBooking = req.body || {};
+    const title = (newBooking.meetingTitle || '').trim();
+    if (!title) {
+      return res.status(400).json({ error: 'Data booking belum lengkap: Judul agenda rapat wajib diisi.' });
+    }
+
+    // Auto-generate id if not supplied
+    if (!newBooking.id || typeof newBooking.id !== 'string') {
+      newBooking.id = `b-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+    }
+
+    // Ensure defaults for critical fields
+    newBooking.meetingTitle = title;
+    newBooking.meetingDate = newBooking.meetingDate || new Date().toISOString().slice(0, 10);
+    newBooking.startTime = newBooking.startTime || '09:00';
+    newBooking.durationHours = Number(newBooking.durationHours) || 1;
+    newBooking.participantCount = Number(newBooking.participantCount) || 1;
+    newBooking.meetingLocation = (newBooking.meetingLocation || 'Ruang Rapat VIP (Lantai 2)').trim();
+    newBooking.department = (newBooking.department || 'Operasi').trim();
+    newBooking.bookerName = (newBooking.bookerName || 'Pengguna').trim();
+    newBooking.whatsapp = (newBooking.whatsapp || '-').trim();
+    newBooking.snackRingan = newBooking.snackRingan || 'Tidak Ada';
+    newBooking.snackBerat = newBooking.snackBerat || 'Tidak Ada';
+    newBooking.makanSiang = newBooking.makanSiang || 'Tidak';
+    newBooking.status = newBooking.status || 'BOOKED';
+
+    // Calculate endTime if missing
+    if (!newBooking.endTime || typeof newBooking.endTime !== 'string') {
+      const parts = newBooking.startTime.split(':');
+      const startH = parseInt(parts[0] || '9', 10) || 9;
+      const startM = parseInt(parts[1] || '0', 10) || 0;
+      const endH = String(Math.min(23, startH + newBooking.durationHours)).padStart(2, '0');
+      newBooking.endTime = `${endH}:${String(startM).padStart(2, '0')}`;
     }
 
     // Ensure bookingNumber is always defined
     if (!newBooking.bookingNumber || typeof newBooking.bookingNumber !== 'string') {
-      const dStr = (newBooking.meetingDate || new Date().toISOString().slice(0, 10)).replace(/-/g, '');
-      const deptPrefix = ((newBooking.department || 'BKG').trim().slice(0, 3)).toUpperCase();
+      const dStr = (newBooking.meetingDate).replace(/-/g, '');
+      const deptPrefix = (newBooking.department.slice(0, 3)).toUpperCase() || 'BKG';
       newBooking.bookingNumber = `${deptPrefix}-${dStr}-${Math.floor(1000 + Math.random() * 9000)}`;
     }
 
@@ -467,9 +498,12 @@ app.post('/api/bookings', (req, res) => {
     const normLocation = (newBooking.meetingLocation || '').trim().toLowerCase().replace(/\s+/g, ' ');
     const isNoRoom = !normLocation || normLocation === 'tidak menggunakan ruang meeting';
     if (!isNoRoom && newBooking.meetingDate && newBooking.startTime && newBooking.endTime) {
-      const toMin = (t: string) => {
-        const [h, m] = (t || '00:00').split(':').map(Number);
-        return (h || 0) * 60 + (m || 0);
+      const toMin = (t: any): number => {
+        if (!t || typeof t !== 'string') return 0;
+        const parts = t.split(':');
+        const h = parseInt(parts[0] || '0', 10) || 0;
+        const m = parseInt(parts[1] || '0', 10) || 0;
+        return h * 60 + m;
       };
       const newStart = toMin(newBooking.startTime);
       const newEnd = toMin(newBooking.endTime);
@@ -526,13 +560,15 @@ app.post('/api/bookings', (req, res) => {
       console.error('[API] Error writing booking create audit log:', err);
     }
 
-    // Send asynchronous notification email to admins safely (non-blocking)
+    // Send asynchronous notification email to admins safely (detached non-blocking)
     try {
       const host = req.get('host') || 'localhost:3000';
       const origin = `${req.protocol || 'http'}://${host}`;
-      emailService.sendNewBookingAdminAlert(newBooking, origin).catch((err) => {
-        console.error('[API] Gagal kirim email alert admin:', err);
-      });
+      setTimeout(() => {
+        emailService.sendNewBookingAdminAlert(newBooking, origin).catch((err) => {
+          console.error('[API] Gagal kirim email alert admin:', err);
+        });
+      }, 100);
     } catch (emailErr) {
       console.warn('[API] Non-blocking email dispatch warning:', emailErr);
     }

@@ -62,18 +62,19 @@ export const Step3Pemesan: React.FC<Step3PemesanProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [isAgreed, setIsAgreed] = useState(false);
+  const [isAgreed, setIsAgreed] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const endTime = calculateEndTime(formData.startTime, formData.durationHours);
 
-  const isFormValid = Boolean(
-    formData.bookerName.trim() &&
-    formData.department.trim() &&
-    formData.whatsapp.trim() &&
-    formData.meetingTitle.trim() &&
-    formData.participantCount > 0
-  );
+  const missingFields: string[] = [];
+  if (!formData.meetingTitle?.trim()) missingFields.push('Nama Agenda Rapat');
+  if (!formData.bookerName?.trim()) missingFields.push('Nama Pemesan (PIC)');
+  if (!formData.department?.trim()) missingFields.push('Departemen / Divisi');
+  if (!formData.whatsapp?.trim()) missingFields.push('Nomor WhatsApp');
+  if (Number(formData.participantCount) <= 0) missingFields.push('Jumlah Peserta (min. 1)');
+
+  const isFormValid = missingFields.length === 0;
 
   const currentAttachments: AttachedDocument[] = getBookingAttachments(formData);
   const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1 MB per file
@@ -170,9 +171,7 @@ export const Step3Pemesan: React.FC<Step3PemesanProps> = ({
   };
 
   const handleFinalSubmit = () => {
-    if (!isAgreed) return;
     setShowConfirmModal(false);
-    setIsAgreed(false);
     onConfirm();
   };
 
@@ -531,13 +530,28 @@ export const Step3Pemesan: React.FC<Step3PemesanProps> = ({
         </div>
       </div>
 
+      {/* Missing Fields Warning Banner */}
+      {!isFormValid && (
+        <div className="flex items-start gap-2.5 p-3.5 bg-amber-50 border border-amber-200/90 rounded-xl text-xs text-amber-900 animate-in fade-in">
+          <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <span className="font-bold">Mohon lengkapi data wajib berikut sebelum mengirim booking:</span>
+            <ul className="list-disc list-inside mt-1 font-medium space-y-0.5 text-amber-800">
+              {missingFields.map((field) => (
+                <li key={field}>{field}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
+
       {/* Navigation & Submit Bar */}
-      <div className="flex items-center justify-between pt-2">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
         <button
           type="button"
           id="btn-step3-back"
           onClick={onBack}
-          className="flex items-center gap-2 px-5 py-3 rounded-xl font-semibold text-sm border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 transition cursor-pointer"
+          className="flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-semibold text-sm border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 transition cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Kembali ke Konsumsi</span>
@@ -547,14 +561,15 @@ export const Step3Pemesan: React.FC<Step3PemesanProps> = ({
           type="button"
           id="btn-step3-submit"
           onClick={() => {
-            setIsAgreed(false);
+            if (!isFormValid) return;
+            setIsAgreed(true);
             setShowConfirmModal(true);
           }}
           disabled={!isFormValid || isSubmitting}
-          className={`flex items-center gap-2 px-7 py-3.5 rounded-xl font-bold text-sm shadow-md transition-all ${
+          className={`flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl font-bold text-sm shadow-md transition-all ${
             isFormValid && !isSubmitting
-              ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer ring-2 ring-emerald-500/20'
-              : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+              ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer ring-2 ring-emerald-500/20 active:scale-[0.98]'
+              : 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
           }`}
         >
           <Send className="w-4 h-4" />
@@ -574,8 +589,8 @@ export const Step3Pemesan: React.FC<Step3PemesanProps> = ({
               <button
                 type="button"
                 onClick={() => {
+                  if (isSubmitting) return;
                   setShowConfirmModal(false);
-                  setIsAgreed(false);
                 }}
                 className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition"
               >
@@ -617,7 +632,7 @@ export const Step3Pemesan: React.FC<Step3PemesanProps> = ({
                   className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-amber-400 cursor-pointer accent-emerald-600"
                 />
                 <span className="text-xs sm:text-sm font-semibold text-amber-950 group-hover:text-amber-900 transition-colors">
-                  ya, mengerti
+                  Ya, saya mengerti ketentuan ini
                 </span>
               </label>
             </div>
@@ -626,11 +641,9 @@ export const Step3Pemesan: React.FC<Step3PemesanProps> = ({
               <button
                 type="button"
                 id="btn-confirm-cancel"
-                onClick={() => {
-                  setShowConfirmModal(false);
-                  setIsAgreed(false);
-                }}
-                className="px-4 py-2.5 rounded-xl border border-slate-200 font-semibold text-xs text-slate-700 hover:bg-slate-50 transition cursor-pointer"
+                disabled={isSubmitting}
+                onClick={() => setShowConfirmModal(false)}
+                className="px-4 py-2.5 rounded-xl border border-slate-200 font-semibold text-xs text-slate-700 hover:bg-slate-50 transition cursor-pointer disabled:opacity-50"
               >
                 Cek Lagi
               </button>
@@ -641,12 +654,12 @@ export const Step3Pemesan: React.FC<Step3PemesanProps> = ({
                 disabled={!isAgreed || isSubmitting}
                 className={`px-5 py-2.5 rounded-xl font-bold text-xs shadow-sm transition flex items-center gap-1.5 ${
                   isAgreed && !isSubmitting
-                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer ring-2 ring-emerald-500/20'
+                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer ring-2 ring-emerald-500/20 active:scale-[0.98]'
                     : 'bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300/50 shadow-none'
                 }`}
               >
                 <CheckCircle2 className="w-4 h-4" />
-                <span>{isSubmitting ? 'Memproses...' : 'Ya, kirim sekarang'}</span>
+                <span>{isSubmitting ? 'Memproses Pengiriman...' : 'Ya, Kirim Sekarang'}</span>
               </button>
             </div>
           </div>
