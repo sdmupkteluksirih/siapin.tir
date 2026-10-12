@@ -1,5 +1,85 @@
 [
   {
+    "id": "log-1791792924299-d5rv2",
+    "timestamp": "2026-10-12T08:15:24.298Z",
+    "userId": "Operasi",
+    "userName": "Budi Santoso",
+    "userDepartment": "Operasi",
+    "userRole": "USER",
+    "action": "BOOKING_CREATE",
+    "details": "Pengajuan booking rapat baru oleh Budi Santoso (Operasi): OPE-20261015-7324 - \"Rapat Perdana Si Apin\" (Ruang Rapat VIP (Lantai 2), 2026-10-15 08:30-10:30)",
+    "targetId": "OPE-20261015-7324",
+    "metadata": {
+      "bookingId": "b-1791792924298-bpunz",
+      "bookingNumber": "OPE-20261015-7324",
+      "department": "Operasi",
+      "participantCount": 10,
+      "makanSiang": "Iya",
+      "snackRingan": "Snack Mix Basah Kering",
+      "snackBerat": "Soto"
+    }
+  },
+  {
+    "id": "log-1791792855270-qiquo",
+    "timestamp": "2026-10-12T08:14:15.269Z",
+    "userId": "Operasi",
+    "userName": "Budi Santoso",
+    "userDepartment": "Operasi",
+    "userRole": "USER",
+    "action": "BOOKING_CREATE",
+    "details": "Pengajuan booking rapat baru oleh Budi Santoso (Operasi): OPE-20261016-1552 - \"Koordinasi Operasional Teluk Sirih\" (Ruang Rapat VIP (Lantai 2), 2026-10-16 09:00-10.5:00)",
+    "targetId": "OPE-20261016-1552",
+    "metadata": {
+      "bookingId": "b-test-curl-ok",
+      "bookingNumber": "OPE-20261016-1552",
+      "department": "Operasi",
+      "participantCount": 12,
+      "makanSiang": "Iya",
+      "snackRingan": "Snack Mix Basah Kering",
+      "snackBerat": "Soto"
+    }
+  },
+  {
+    "id": "log-1791792730064-cdhdb",
+    "timestamp": "2026-10-12T08:12:10.063Z",
+    "userId": "admin.siapin",
+    "userName": "Admin Si Apin",
+    "userDepartment": "Administrasi & SDM",
+    "userRole": "ADMIN",
+    "action": "BOOKING_CREATE",
+    "details": "Pengajuan booking rapat baru oleh Admin Si Apin (admin.siapin): ADM-20261012-0001 - \"Rapat Koordinasi\" (Ruang Rapat Lantai 1, 2026-10-12 09:00-10:00)",
+    "targetId": "ADM-20261012-0001",
+    "metadata": {
+      "bookingId": "b-test-exact",
+      "bookingNumber": "ADM-20261012-0001",
+      "department": "Administrasi & SDM",
+      "participantCount": 20,
+      "makanSiang": "Iya",
+      "snackRingan": "Snack Mix Basah Kering",
+      "snackBerat": "Soto"
+    }
+  },
+  {
+    "id": "log-1791792628915-5zlox",
+    "timestamp": "2026-10-12T08:10:28.913Z",
+    "userId": "Operasi",
+    "userName": "Pengguna",
+    "userDepartment": "Operasi",
+    "userRole": "USER",
+    "action": "BOOKING_CREATE",
+    "details": "Pengajuan booking rapat baru oleh Pengguna (Operasi): OPE-20261012-9384 - \"Rapat Tes Dokumen\" (Ruang Rapat VIP (Lantai 2), 2026-10-12 09:00-10:00)",
+    "targetId": "OPE-20261012-9384",
+    "metadata": {
+      "bookingId": "b-1791792628913-4fngy",
+      "bookingNumber": "OPE-20261012-9384",
+      "department": "Operasi",
+      "participantCount": 1,
+      "makanSiang": "Tidak",
+      "snackRingan": "Tidak Ada",
+      "snackBerat": "Tidak Ada"
+    }
+  },
+  {
     "id": "log-1791791841789-907so",
     "timestamp": "2026-10-12T07:57:21.788Z",
     "userId": "Operasi",

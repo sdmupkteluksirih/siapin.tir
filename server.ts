@@ -443,11 +443,13 @@ app.post('/api/bookings', (req, res) => {
 
     // Calculate endTime if missing
     if (!newBooking.endTime || typeof newBooking.endTime !== 'string') {
-      const parts = newBooking.startTime.split(':');
-      const startH = parseInt(parts[0] || '9', 10) || 9;
-      const startM = parseInt(parts[1] || '0', 10) || 0;
-      const endH = String(Math.min(23, startH + newBooking.durationHours)).padStart(2, '0');
-      newBooking.endTime = `${endH}:${String(startM).padStart(2, '0')}`;
+      const [hoursStr, minsStr] = (newBooking.startTime || '09:00').split(':');
+      const startMinutes = (parseInt(hoursStr, 10) || 9) * 60 + (parseInt(minsStr, 10) || 0);
+      const durationMinutes = Math.round(newBooking.durationHours * 60);
+      const endTotal = (startMinutes + durationMinutes) % 1440;
+      const endH = Math.floor(endTotal / 60);
+      const endM = endTotal % 60;
+      newBooking.endTime = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
     }
 
     // Ensure bookingNumber is always defined
