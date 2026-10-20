@@ -30,8 +30,10 @@ app.use((req, res, next) => {
   next();
 });
 
-// Persistent JSON Storage Directory
-const DATA_DIR = path.join(process.cwd(), 'data');
+// Persistent JSON Storage Directory (Supports both persistent container runtime & Vercel serverless /tmp)
+const isVercelRuntime = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+const BUNDLED_DATA_DIR = path.join(process.cwd(), 'data');
+const DATA_DIR = isVercelRuntime ? path.join('/tmp', 'data') : BUNDLED_DATA_DIR;
 const BOOKINGS_FILE = path.join(DATA_DIR, 'bookings.json');
 const USERS_FILE = path.join(DATA_DIR, 'users.json');
 const LOGS_FILE = path.join(DATA_DIR, 'activity_logs.json');
@@ -68,13 +70,24 @@ function syncMasterBankData(triggerEvent?: string): void {
   }
 }
 
-// Ensure data directory exists safely
+// Ensure data directory exists safely and seed if running in Vercel /tmp
 try {
   if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
   }
+  if (isVercelRuntime) {
+    ['bookings.json', 'users.json', 'activity_logs.json', 'master_bank_data.json'].forEach(file => {
+      const dest = path.join(DATA_DIR, file);
+      const src = path.join(BUNDLED_DATA_DIR, file);
+      if (!fs.existsSync(dest) && fs.existsSync(src)) {
+        try {
+          fs.copyFileSync(src, dest);
+        } catch {}
+      }
+    });
+  }
 } catch (dirErr) {
-  console.warn('[Storage] Notice: Filesystem may be readonly in serverless runtime:', dirErr);
+  console.warn('[Storage] Notice: Filesystem setup in serverless runtime:', dirErr);
 }
 
 // Initialize Master Bank Data immediately on startup
@@ -324,19 +337,47 @@ const SEED_BOOKINGS = [
   }
 ];
 
+let inMemoryBookings: any[] | null = null;
+
 // Helper functions for reading and writing data safely
 function readBookings(): any[] {
   try {
-    if (!fs.existsSync(BOOKINGS_FILE)) {
-      fs.writeFileSync(BOOKINGS_FILE, JSON.stringify([], null, 2), 'utf-8');
-      return [];
+    const map = new Map<string, any>();
+
+    // 1. First check bundled persistent repository file
+    const bundledPath = path.join(BUNDLED_DATA_DIR, 'bookings.json');
+    if (fs.existsSync(bundledPath)) {
+      try {
+        const raw = fs.readFileSync(bundledPath, 'utf-8');
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          parsed.forEach((b: any) => { if (b && b.id) map.set(b.id, b); });
+        }
+      } catch {}
     }
-    const raw = fs.readFileSync(BOOKINGS_FILE, 'utf-8');
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+
+    // 2. Read from active runtime file (e.g. /tmp/data/bookings.json on Vercel)
+    if (fs.existsSync(BOOKINGS_FILE)) {
+      try {
+        const raw = fs.readFileSync(BOOKINGS_FILE, 'utf-8');
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          parsed.forEach((b: any) => { if (b && b.id) map.set(b.id, b); });
+        }
+      } catch {}
+    }
+
+    // 3. Merge with runtime in-memory cache to guarantee zero loss across function invocations
+    if (Array.isArray(inMemoryBookings)) {
+      inMemoryBookings.forEach((b: any) => { if (b && b.id) map.set(b.id, b); });
+    }
+
+    const merged = Array.from(map.values());
+    inMemoryBookings = merged;
+    return merged;
   } catch (err) {
     console.error('Error reading bookings file:', err);
-    return [];
+    return Array.isArray(inMemoryBookings) ? inMemoryBookings : [];
   }
 }
 
@@ -344,8 +385,20 @@ const BACKUP_FILE = path.join(DATA_DIR, 'bookings_backup.json');
 
 function writeBookings(data: any[]): void {
   try {
+    inMemoryBookings = data;
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
     fs.writeFileSync(BOOKINGS_FILE, JSON.stringify(data, null, 2), 'utf-8');
     fs.writeFileSync(BACKUP_FILE, JSON.stringify(data, null, 2), 'utf-8');
+
+    // Also persist back to bundled repo data directory when filesystem is writable
+    if (!isVercelRuntime && fs.existsSync(BUNDLED_DATA_DIR)) {
+      try {
+        fs.writeFileSync(path.join(BUNDLED_DATA_DIR, 'bookings.json'), JSON.stringify(data, null, 2), 'utf-8');
+      } catch {}
+    }
+
     notifySSE('bookings_changed');
     syncMasterBankData('bookings_changed');
   } catch (err) {
@@ -1032,7 +1085,16 @@ const SEED_USERS = [
 function readUsers(): any[] {
   try {
     if (!fs.existsSync(USERS_FILE)) {
-      fs.writeFileSync(USERS_FILE, JSON.stringify(SEED_USERS, null, 2), 'utf-8');
+      if (fs.existsSync(path.join(BUNDLED_DATA_DIR, 'users.json'))) {
+        try {
+          const raw = fs.readFileSync(path.join(BUNDLED_DATA_DIR, 'users.json'), 'utf-8');
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        } catch {}
+      }
+      try {
+        fs.writeFileSync(USERS_FILE, JSON.stringify(SEED_USERS, null, 2), 'utf-8');
+      } catch {}
       return SEED_USERS;
     }
     const raw = fs.readFileSync(USERS_FILE, 'utf-8');
@@ -1596,7 +1658,16 @@ const SEED_LOGS = [
 function readActivityLogs(): any[] {
   try {
     if (!fs.existsSync(LOGS_FILE)) {
-      fs.writeFileSync(LOGS_FILE, JSON.stringify(SEED_LOGS, null, 2), 'utf-8');
+      if (fs.existsSync(path.join(BUNDLED_DATA_DIR, 'activity_logs.json'))) {
+        try {
+          const raw = fs.readFileSync(path.join(BUNDLED_DATA_DIR, 'activity_logs.json'), 'utf-8');
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) return parsed;
+        } catch {}
+      }
+      try {
+        fs.writeFileSync(LOGS_FILE, JSON.stringify(SEED_LOGS, null, 2), 'utf-8');
+      } catch {}
       return SEED_LOGS;
     }
     const raw = fs.readFileSync(LOGS_FILE, 'utf-8');

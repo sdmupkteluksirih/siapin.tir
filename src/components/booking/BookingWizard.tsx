@@ -9,7 +9,7 @@ import { Step2Konsumsi } from './Step2Konsumsi';
 import { Step3Pemesan } from './Step3Pemesan';
 import { BookingSuccess } from './BookingSuccess';
 import { HeroBanner } from '../common/HeroBanner';
-import { Layers, UtensilsCrossed, CheckCircle2, ShieldAlert, X } from 'lucide-react';
+import { Layers, UtensilsCrossed, CheckCircle2, ShieldAlert, X, CalendarCheck2, ArrowRight } from 'lucide-react';
 
 interface BookingWizardProps {
   onCheckStatus: (bookingNumber: string) => void;
@@ -26,11 +26,21 @@ export const BookingWizard: React.FC<BookingWizardProps> = ({
 }) => {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [bgSettings, setBgSettings] = useState<BackgroundSettings>(() => themeStorage.getSettings());
+  const [allBookings, setAllBookings] = useState<Booking[]>(() => bookingStorage.getAll());
 
   useEffect(() => {
     const unsub = themeStorage.subscribe((updated) => {
       setBgSettings(updated);
     });
+    return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    const refreshBookings = () => {
+      setAllBookings(bookingStorage.getAll());
+    };
+    refreshBookings();
+    const unsub = bookingStorage.subscribe(refreshBookings);
     return () => unsub();
   }, []);
 
@@ -140,6 +150,39 @@ export const BookingWizard: React.FC<BookingWizardProps> = ({
           currentUser={currentUser} 
           onOpenSettings={onOpenSettings} 
         />
+      )}
+      {/* Real-Time Connected Data Banner (1 Sumber Data Antar Akun) */}
+      {allBookings.length > 0 && (
+        <div className="bg-slate-900/90 text-white rounded-2xl p-3 sm:p-4 border border-slate-800 shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 backdrop-blur-md">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 rounded-xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 flex items-center justify-center shrink-0">
+              <CalendarCheck2 className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs sm:text-sm font-bold text-slate-100">
+                  Data Terhubung (1 Sumber): {allBookings.length} Agenda Booking Aktif
+                </span>
+                <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] font-bold border border-emerald-500/30">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  Tersinkronisasi Real-Time
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 truncate mt-0.5">
+                Terakhir: <strong className="text-cyan-300 font-mono">{allBookings[0].bookingNumber}</strong> ({allBookings[0].department} • {allBookings[0].meetingLocation} • {allBookings[0].meetingDate})
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            id="btn-banner-view-all-bookings"
+            onClick={() => onCheckStatus(allBookings[0].bookingNumber)}
+            className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 shadow-sm"
+          >
+            <span>Buka Daftar Booking</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
       )}
 
       {/* Top Progress Step Indicator - 3 Steps */}

@@ -1,1 +1,45 @@
-[]
+[
+  {
+    "id": "b-ksa-20261012-0001",
+    "bookingNumber": "KSA-20261012-0001",
+    "meetingDate": "2026-10-12",
+    "startTime": "09:00",
+    "durationHours": 2,
+    "endTime": "11:00",
+    "snackRingan": "Snack Mix Basah Kering",
+    "snackBerat": "Tidak Ada",
+    "makanSiang": "Iya",
+    "bookerName": "Siti Rahmawati",
+    "department": "Keuangan & Umum",
+    "whatsapp": "083182271472",
+    "email": "krismonaandria@gmail.com",
+    "meetingTitle": "Koordinasi Administrasi & Keuangan Terpadu",
+    "meetingLocation": "Room meeting KU lt. 1",
+    "participantCount": 20,
+    "organizationOrGuests": "Internal Bagian Keuangan & Administrasi",
+    "notes": "Agenda rapat koordinasi internal bagian Keuangan & Umum.",
+    "status": "BOOKED",
+    "createdAt": "2026-10-12T01:50:00.000Z",
+    "createdById": "keu.mum",
+    "createdByName": "Keuangan & Umum",
+    "createdByDepartment": "Keuangan & Umum",
+    "createdByRole": "USER",
+    "lastModifiedById": "keu.mum",
+    "lastModifiedByName": "Keuangan & Umum",
+    "lastModifiedByDepartment": "Keuangan & Umum",
+    "lastModifiedByRole": "USER",
+    "lastModifiedAt": "2026-10-12T01:50:00.000Z",
+    "lastAction": "DIBUAT",
+    "history": [
+      {
+        "timestamp": "2026-10-12T01:50:00.000Z",
+        "action": "DIBUAT",
+        "userId": "keu.mum",
+        "userName": "Keuangan & Umum",
+        "userRole": "USER",
+        "userDepartment": "Keuangan & Umum",
+        "notes": "Pengajuan booking awal Room meeting KU lt. 1"
+      }
+    ]
+  }
+]

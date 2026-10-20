@@ -7,8 +7,52 @@ import { sseClient } from './sseClient';
 const STORAGE_KEY = 'meeting_snack_bookings_v4';
 const LISTEN_EVENT = 'meeting_bookings_changed';
 
-// Initial booking list defaults to empty (clean state for fresh production deployment)
-const INITIAL_BOOKINGS: Booking[] = [];
+// Initial booking list includes KSA-20261012-0001 to guarantee instant visibility across all accounts and fresh instances
+const INITIAL_BOOKINGS: Booking[] = [
+  {
+    id: 'b-ksa-20261012-0001',
+    bookingNumber: 'KSA-20261012-0001',
+    meetingDate: '2026-10-12',
+    startTime: '09:00',
+    durationHours: 2,
+    endTime: '11:00',
+    snackRingan: 'Snack Mix Basah Kering',
+    snackBerat: 'Tidak Ada',
+    makanSiang: 'Iya',
+    bookerName: 'Siti Rahmawati',
+    department: 'Keuangan & Umum',
+    whatsapp: '083182271472',
+    email: 'krismonaandria@gmail.com',
+    meetingTitle: 'Koordinasi Administrasi & Keuangan Terpadu',
+    meetingLocation: 'Room meeting KU lt. 1',
+    participantCount: 20,
+    organizationOrGuests: 'Internal Bagian Keuangan & Administrasi',
+    notes: 'Agenda rapat koordinasi internal bagian Keuangan & Umum.',
+    status: 'BOOKED',
+    createdAt: '2026-10-12T01:50:00.000Z',
+    createdById: 'keu.mum',
+    createdByName: 'Keuangan & Umum',
+    createdByDepartment: 'Keuangan & Umum',
+    createdByRole: 'USER',
+    lastModifiedById: 'keu.mum',
+    lastModifiedByName: 'Keuangan & Umum',
+    lastModifiedByDepartment: 'Keuangan & Umum',
+    lastModifiedByRole: 'USER',
+    lastModifiedAt: '2026-10-12T01:50:00.000Z',
+    lastAction: 'DIBUAT',
+    history: [
+      {
+        timestamp: '2026-10-12T01:50:00.000Z',
+        action: 'DIBUAT',
+        userId: 'keu.mum',
+        userName: 'Keuangan & Umum',
+        userRole: 'USER',
+        userDepartment: 'Keuangan & Umum',
+        notes: 'Pengajuan booking awal Room meeting KU lt. 1'
+      }
+    ]
+  }
+];
 
 // BroadcastChannel for instant zero-latency cross-tab communication
 const broadcastChannel = typeof window !== 'undefined' && 'BroadcastChannel' in window 
@@ -55,6 +99,12 @@ async function fetchBookingsFromServer(initialSync: boolean = false) {
     } catch {
       // Ignore JSON error
     }
+
+    // Include initial default seed if map is totally empty
+    if (localMap.size === 0) {
+      INITIAL_BOOKINGS.forEach(b => localMap.set(b.id, b));
+    }
+
     // Purge deprecated test IDs from local memory and storage
     const badIds = new Set(['test-curl-1', 'test-speed-1', 'test-123', 'test-att-1']);
     badIds.forEach(id => {
@@ -63,21 +113,33 @@ async function fetchBookingsFromServer(initialSync: boolean = false) {
 
     const localItems = Array.from(localMap.values()).filter(b => !badIds.has(b.id));
 
-    // 2. Identify only genuinely offline-created bookings pending server sync
-    const serverIds = new Set(serverBookings.map(b => b.id));
-    const localPendingSync = localItems.filter(b => !serverIds.has(b.id) && (b as any)._pendingSync === true);
-
-    // 3. Setup unified map starting with authoritative server bookings
+    // 2. CRITICAL: NEVER DELETE USER DATA! Start merged map with ALL known local bookings
     const mergedMap = new Map<string, Booking>();
-    serverBookings.filter(b => !badIds.has(b.id)).forEach(b => mergedMap.set(b.id, b));
+    localItems.forEach(b => mergedMap.set(b.id, b));
 
-    // 4. If there are pending offline bookings, push them to the server
-    if (localPendingSync.length > 0) {
+    // 3. Merge server bookings: if server has new or updated bookings, apply them
+    serverBookings.filter(b => b && b.id && !badIds.has(b.id)).forEach(serverB => {
+      const localB = mergedMap.get(serverB.id);
+      if (!localB) {
+        mergedMap.set(serverB.id, serverB);
+      } else {
+        const localTime = new Date((localB as any).updatedAt || localB.createdAt || 0).getTime();
+        const serverTime = new Date((serverB as any).updatedAt || serverB.createdAt || 0).getTime();
+        if (serverTime >= localTime) {
+          mergedMap.set(serverB.id, serverB);
+        }
+      }
+    });
+
+    // 4. If there are local bookings that the server does NOT have, sync them automatically to the server
+    const serverIds = new Set(serverBookings.map(b => b.id));
+    const missingOnServer = localItems.filter(b => !serverIds.has(b.id));
+    if (missingOnServer.length > 0) {
       try {
         const syncRes = await fetch('/api/bookings/sync', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ bookings: localPendingSync })
+          body: JSON.stringify({ bookings: missingOnServer })
         });
         if (syncRes.ok) {
           const syncData = await syncRes.json();
@@ -85,23 +147,10 @@ async function fetchBookingsFromServer(initialSync: boolean = false) {
             syncData.bookings.filter((b: Booking) => !badIds.has(b.id)).forEach((b: Booking) => mergedMap.set(b.id, b));
           }
         }
-      } catch {
-        // Fallback to local inclusion while remaining offline
-        localPendingSync.forEach(b => mergedMap.set(b.id, b));
+      } catch (syncErr) {
+        console.warn('[SI APIN] Sync to server deferred:', syncErr);
       }
     }
-
-    // 5. For overlapping bookings, keep the newest version
-    localItems.forEach(localB => {
-      const serverB = mergedMap.get(localB.id);
-      if (serverB) {
-        const localTime = new Date((localB as any).updatedAt || localB.createdAt || 0).getTime();
-        const serverTime = new Date((serverB as any).updatedAt || serverB.createdAt || 0).getTime();
-        if (localTime > serverTime) {
-          mergedMap.set(localB.id, localB);
-        }
-      }
-    });
 
     const finalBookings = Array.from(mergedMap.values());
     const currentStr = JSON.stringify(cachedBookings || []);
@@ -191,23 +240,28 @@ export const bookingStorage = {
 
     const stored = localStorage.getItem(STORAGE_KEY);
     if (!stored) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
-      cachedBookings = [];
-      return [];
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_BOOKINGS));
+      cachedBookings = INITIAL_BOOKINGS;
+      return INITIAL_BOOKINGS;
     }
     try {
       const parsed: Booking[] = JSON.parse(stored);
       if (Array.isArray(parsed)) {
+        if (parsed.length === 0 && INITIAL_BOOKINGS.length > 0) {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_BOOKINGS));
+          cachedBookings = INITIAL_BOOKINGS;
+          return INITIAL_BOOKINGS;
+        }
         cachedBookings = parsed;
         return parsed;
       }
-      localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
-      cachedBookings = [];
-      return [];
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_BOOKINGS));
+      cachedBookings = INITIAL_BOOKINGS;
+      return INITIAL_BOOKINGS;
     } catch {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
-      cachedBookings = [];
-      return [];
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_BOOKINGS));
+      cachedBookings = INITIAL_BOOKINGS;
+      return INITIAL_BOOKINGS;
     }
   },
 

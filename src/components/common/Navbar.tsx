@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MainView, UserAccount } from '../../types';
 import { authStorage } from '../../services/authStorage';
+import { bookingStorage } from '../../services/bookingStorage';
 import { SiApinLogo } from './SiApinLogo';
 import { 
   CalendarCheck2, 
@@ -36,6 +37,18 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  const [totalBookingsCount, setTotalBookingsCount] = useState<number>(() => bookingStorage.getAll().length);
+
+  // Keep total bookings count fresh
+  useEffect(() => {
+    const handleCount = () => {
+      setTotalBookingsCount(bookingStorage.getAll().length);
+    };
+    handleCount();
+    const unsub = bookingStorage.subscribe(handleCount);
+    return () => unsub();
+  }, []);
 
   // Close menu when clicking outside or pressing Escape
   useEffect(() => {
@@ -99,6 +112,63 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             <SiApinLogo size="md" variant="dark" />
           </div>
+
+          {/* Central Prominent Navigation (Visible on md and larger) */}
+          <nav className="hidden md:flex items-center gap-1.5 bg-slate-900/90 border border-slate-800/80 p-1.5 rounded-2xl shadow-inner">
+            <button
+              type="button"
+              id="nav-tab-booking"
+              onClick={() => onNavigate('booking')}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                currentView === 'booking'
+                  ? 'bg-gradient-to-r from-cyan-500 to-indigo-600 text-white shadow-md'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800'
+              }`}
+            >
+              <CalendarCheck2 className="w-4 h-4" />
+              <span>Buat Booking</span>
+            </button>
+
+            <button
+              type="button"
+              id="nav-tab-search"
+              onClick={() => onNavigate('search')}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                currentView === 'search'
+                  ? 'bg-gradient-to-r from-cyan-500 to-indigo-600 text-white shadow-md'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800'
+              }`}
+            >
+              <Search className="w-4 h-4" />
+              <span>Daftar & Cek Booking</span>
+              {totalBookingsCount > 0 && (
+                <span className="px-2 py-0.5 rounded-full bg-cyan-400 text-slate-950 text-[10px] font-black">
+                  {totalBookingsCount}
+                </span>
+              )}
+            </button>
+
+            {isAdmin && (
+              <button
+                type="button"
+                id="nav-tab-admin"
+                onClick={() => onNavigate('admin')}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  currentView === 'admin'
+                    ? 'bg-indigo-600 text-white shadow-md'
+                    : 'text-indigo-300 hover:text-white hover:bg-indigo-950/60'
+                }`}
+              >
+                <ShieldCheck className="w-4 h-4" />
+                <span>Admin Panel</span>
+                {pendingBookingsCount > 0 && (
+                  <span className="px-1.5 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-black">
+                    {pendingBookingsCount}
+                  </span>
+                )}
+              </button>
+            )}
+          </nav>
 
           {/* Top-Right Hamburger Menu Container */}
           <div className="relative shrink-0" ref={menuRef}>
