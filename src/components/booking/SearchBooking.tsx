@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Booking } from '../../types';
+import { Booking, UserAccount } from '../../types';
 import { bookingStorage } from '../../services/bookingStorage';
 import { authStorage } from '../../services/authStorage';
 import { formatDateIndo, formatDuration } from '../../utils/timeUtils';
 import { getBookingAttachments, formatFileSize } from '../../utils/fileUtils';
+import { canUserCancelBooking } from '../../utils/bookingPermissions';
 import { StatusBadge } from '../common/StatusBadge';
 import { WhatsAppNotificationModal } from '../common/WhatsAppNotificationModal';
 import { 
@@ -22,7 +23,8 @@ import {
   HelpCircle,
   MessageSquare,
   ShieldCheck,
-  RefreshCw
+  RefreshCw,
+  Lock
 } from 'lucide-react';
 
 interface SearchBookingProps {
@@ -34,13 +36,23 @@ export const SearchBooking: React.FC<SearchBookingProps> = ({
   initialSearchQuery = '',
   onNewBooking
 }) => {
-  const currentUser = authStorage.getCurrentUser();
+  const [currentUser, setCurrentUser] = useState<UserAccount | null>(() => authStorage.getCurrentUser());
   const [query, setQuery] = useState(initialSearchQuery);
   const [activeTab, setActiveTab] = useState<'ALL' | 'MY_DEPT'>('ALL');
   const [results, setResults] = useState<Booking[]>([]);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [isWaModalOpen, setIsWaModalOpen] = useState(false);
+
+  // Sync currentUser with real-time auth changes
+  useEffect(() => {
+    const unsubAuth = authStorage.subscribe(() => {
+      setCurrentUser(authStorage.getCurrentUser());
+    });
+    return () => unsubAuth();
+  }, []);
+
+  const canCancel = canUserCancelBooking(selectedBooking, currentUser);
 
   const refreshList = useCallback(() => {
     const all = bookingStorage.getAll();
@@ -98,6 +110,15 @@ export const SearchBooking: React.FC<SearchBookingProps> = ({
   };
 
   const handleCancelBooking = (bookingId: string) => {
+    const target = bookingStorage.getById(bookingId) || selectedBooking;
+    if (!target) return;
+
+    if (!canUserCancelBooking(target, currentUser)) {
+      alert('Maaf, Anda tidak memiliki otoritas untuk membatalkan booking ini. Otoritas pembatalan hanya dimiliki oleh Admin dan akun/bagian pembuat booking.');
+      setShowCancelModal(false);
+      return;
+    }
+
     bookingStorage.updateStatus(bookingId, 'CANCELLED');
     setShowCancelModal(false);
     if (selectedBooking && selectedBooking.id === bookingId) {
@@ -406,8 +427,8 @@ export const SearchBooking: React.FC<SearchBookingProps> = ({
                   </button>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  {selectedBooking.status === 'BOOKED' && (
+                <div className="flex flex-wrap items-center gap-2">
+                  {selectedBooking.status === 'BOOKED' && canCancel && (
                     <button
                       type="button"
                       onClick={() => setShowCancelModal(true)}
@@ -416,6 +437,13 @@ export const SearchBooking: React.FC<SearchBookingProps> = ({
                       <XCircle className="w-4 h-4" />
                       <span>Batalkan Booking</span>
                     </button>
+                  )}
+
+                  {selectedBooking.status === 'BOOKED' && !canCancel && (
+                    <div className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200/70 text-slate-500 text-xs">
+                      <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                      <span className="truncate">Otoritas Batal: Admin & Bagian {selectedBooking.department || selectedBooking.createdByDepartment || 'Pembuat'}</span>
+                    </div>
                   )}
 
                   <button
@@ -440,7 +468,7 @@ export const SearchBooking: React.FC<SearchBookingProps> = ({
       </div>
 
       {/* Cancel Confirmation Modal */}
-      {showCancelModal && selectedBooking && (
+      {showCancelModal && selectedBooking && canCancel && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-slate-100">
             <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mb-4">
