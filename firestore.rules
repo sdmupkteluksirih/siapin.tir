@@ -1,0 +1,29 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Test connectivity
+    match /test/{docId} {
+      allow read, write: if true;
+    }
+
+    // Corporate bookings: readable by all devices so real-time calendar and search work everywhere
+    match /bookings/{bookingId} {
+      allow read: if true;
+      allow create, update: if request.resource.data.id != null;
+      allow delete: if true;
+    }
+
+    // User accounts
+    match /users/{userId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // System audit & activity logs
+    match /activity_logs/{logId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if false;
+    }
+  }
+}

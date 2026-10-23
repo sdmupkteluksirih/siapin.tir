@@ -3,6 +3,8 @@ import { calculateEndTime, generateDepartmentBookingNumber, getTodayDateString }
 import { activityLogger } from './activityLogger';
 import { authStorage } from './authStorage';
 import { sseClient } from './sseClient';
+import { db } from './firebaseClient';
+import { collection, doc, setDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
 
 const STORAGE_KEY = 'meeting_snack_bookings_v4';
 const LISTEN_EVENT = 'meeting_bookings_changed';
@@ -71,6 +73,106 @@ function notifySubscribers() {
     } catch {
       // Ignore broadcast errors
     }
+  }
+}
+
+// Sanitize documents to prevent Firestore undefined errors and protect document size limit
+function sanitizeForFirestore(obj: any): any {
+  if (obj === null || obj === undefined) return null;
+  if (Array.isArray(obj)) {
+    return obj.map(item => sanitizeForFirestore(item)).filter(item => item !== undefined);
+  }
+  if (typeof obj === 'object') {
+    const res: Record<string, any> = {};
+    for (const [k, v] of Object.entries(obj)) {
+      if (v !== undefined) {
+        if (k === 'dataUrl' && typeof v === 'string' && v.length > 500000) {
+          res[k] = '';
+        } else {
+          res[k] = sanitizeForFirestore(v);
+        }
+      }
+    }
+    return res;
+  }
+  return obj;
+}
+
+export async function syncBookingToFirestore(booking: Booking): Promise<void> {
+  if (!booking || !booking.id) return;
+  try {
+    const clean = sanitizeForFirestore(booking);
+    await setDoc(doc(db, 'bookings', booking.id), clean, { merge: true });
+  } catch (err) {
+    console.warn('[Firestore] Gagal menyimpan booking ke cloud:', err);
+  }
+}
+
+export async function deleteBookingFromFirestore(id: string): Promise<void> {
+  if (!id) return;
+  try {
+    await deleteDoc(doc(db, 'bookings', id));
+  } catch (err) {
+    console.warn('[Firestore] Gagal menghapus booking dari cloud:', err);
+  }
+}
+
+let isFirestoreInitialized = false;
+
+function setupFirestoreRealtime() {
+  if (typeof window === 'undefined' || isFirestoreInitialized) return;
+  isFirestoreInitialized = true;
+
+  try {
+    const bookingsCol = collection(db, 'bookings');
+    onSnapshot(bookingsCol, (snapshot) => {
+      if (snapshot.empty) {
+        // If cloud database is empty, seed with current local or default bookings
+        const seedSource = (cachedBookings && cachedBookings.length > 0) ? cachedBookings : INITIAL_BOOKINGS;
+        seedSource.forEach(b => {
+          syncBookingToFirestore(b);
+        });
+        return;
+      }
+
+      const remoteBookings: Booking[] = [];
+      snapshot.forEach((docSnap) => {
+        const item = docSnap.data() as Booking;
+        if (item && item.id) {
+          remoteBookings.push(item);
+        }
+      });
+
+      // Merge remote with local to ensure nothing is lost during network transitions
+      const mergedMap = new Map<string, Booking>();
+      const local = cachedBookings || [];
+      local.forEach(b => mergedMap.set(b.id, b));
+      remoteBookings.forEach(rb => mergedMap.set(rb.id, rb));
+
+      const sorted = Array.from(mergedMap.values()).sort((a, b) => {
+        const dateA = a.meetingDate || '';
+        const dateB = b.meetingDate || '';
+        if (dateA !== dateB) return dateB.localeCompare(dateA);
+        const startA = a.startTime || '';
+        const startB = b.startTime || '';
+        if (startA !== startB) return startB.localeCompare(startA);
+        return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+      });
+
+      const oldJson = JSON.stringify(cachedBookings || []);
+      const newJson = JSON.stringify(sorted);
+      if (oldJson !== newJson) {
+        cachedBookings = sorted;
+        try {
+          localStorage.setItem(STORAGE_KEY, newJson);
+        } catch {}
+        notifySubscribers();
+      }
+    }, (err) => {
+      console.warn('[Firestore] Realtime subscription notice:', err);
+    });
+  } catch (err) {
+    console.warn('[Firestore] Error starting realtime sync:', err);
   }
 }
 
@@ -174,6 +276,9 @@ async function fetchBookingsFromServer(initialSync: boolean = false) {
 function setupRealtimeSync() {
   if (typeof window === 'undefined' || isInitialized) return;
   isInitialized = true;
+
+  // 0. Cloud Firestore Realtime Cross-Device Listener (instant global sync across all gadgets & laptops)
+  setupFirestoreRealtime();
 
   // 1. Initial server fetch & sync
   fetchBookingsFromServer(true);
@@ -358,6 +463,7 @@ export const bookingStorage = {
       // Ignore quota errors
     }
     notifySubscribers();
+    syncBookingToFirestore(newBooking);
 
     // Persist to central server asynchronously
     fetch('/api/bookings', {
@@ -517,6 +623,7 @@ export const bookingStorage = {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
         } catch {}
         notifySubscribers();
+        syncBookingToFirestore(savedBooking);
 
         // Instantly notify other listeners & tabs
         try {
@@ -550,6 +657,7 @@ export const bookingStorage = {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
     } catch {}
     notifySubscribers();
+    syncBookingToFirestore(newBooking);
 
     try {
       sseClient.notifyLocal('bookings_changed', newBooking);
@@ -640,6 +748,7 @@ export const bookingStorage = {
     notifySubscribers();
 
     if (updatedBooking) {
+      syncBookingToFirestore(updatedBooking);
       // Persist to central server asynchronously
       fetch(`/api/bookings/${id}`, {
         method: 'PUT',
@@ -731,6 +840,7 @@ export const bookingStorage = {
     notifySubscribers();
 
     if (updatedBooking) {
+      syncBookingToFirestore(updatedBooking);
       // Persist to central server asynchronously
       fetch(`/api/bookings/${id}`, {
         method: 'PUT',
@@ -815,6 +925,7 @@ export const bookingStorage = {
     notifySubscribers();
 
     if (updatedBooking) {
+      syncBookingToFirestore(updatedBooking);
       // Persist to central server asynchronously
       fetch(`/api/bookings/${id}`, {
         method: 'PUT',
@@ -848,6 +959,7 @@ export const bookingStorage = {
         // Ignore quota errors
       }
       notifySubscribers();
+      deleteBookingFromFirestore(id);
 
       // Delete on central server asynchronously
       fetch(`/api/bookings/${id}`, {

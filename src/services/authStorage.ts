@@ -1,6 +1,8 @@
 import { UserAccount } from '../types';
 import { activityLogger } from './activityLogger';
 import { sseClient } from './sseClient';
+import { db } from './firebaseClient';
+import { collection, doc, setDoc, onSnapshot } from 'firebase/firestore';
 
 const USERS_STORAGE_KEY = 'meeting_app_users_v2';
 const CURRENT_USER_KEY = 'meeting_app_current_user_v1';
@@ -329,6 +331,7 @@ async function fetchUsersFromServer(): Promise<UserAccount[]> {
 
 async function syncUsersToServer(users: UserAccount[]) {
   if (typeof window === 'undefined') return;
+  users.forEach(u => syncUserToFirestore(u));
   try {
     await fetch('/api/users/sync', {
       method: 'POST',
@@ -340,9 +343,43 @@ async function syncUsersToServer(users: UserAccount[]) {
   }
 }
 
+export async function syncUserToFirestore(user: UserAccount): Promise<void> {
+  if (!user || !user.id) return;
+  try {
+    const clean: Record<string, any> = {};
+    for (const [k, v] of Object.entries(user)) {
+      if (v !== undefined) clean[k] = v;
+    }
+    await setDoc(doc(db, 'users', user.id), clean, { merge: true });
+  } catch (err) {
+    console.warn('[Firestore] Gagal sync user ke cloud:', err);
+  }
+}
+
 function setupAuthRealtimeSync() {
   if (typeof window === 'undefined' || isAuthSyncInitialized) return;
   isAuthSyncInitialized = true;
+
+  // Cloud Firestore Realtime listener for cross-device user sync
+  try {
+    const usersCol = collection(db, 'users');
+    onSnapshot(usersCol, (snapshot) => {
+      if (snapshot.empty) {
+        DEFAULT_USERS.forEach(u => syncUserToFirestore(u));
+        return;
+      }
+      const remoteUsers: UserAccount[] = [];
+      snapshot.forEach(docSnap => {
+        const u = docSnap.data() as UserAccount;
+        if (u && u.id) remoteUsers.push(u);
+      });
+      if (remoteUsers.length > 0) {
+        applyServerUsersUpdate(remoteUsers);
+      }
+    }, (err) => {
+      console.warn('[Firestore] Users sync notice:', err);
+    });
+  } catch {}
 
   fetchUsersFromServer();
 
@@ -779,6 +816,10 @@ export const authStorage = {
         } catch {}
       }
       notifyAuthSubscribers();
+      const targetUser = updated.find(u => u.id === userId || (u.username && u.username.toLowerCase() === userId.toLowerCase()));
+      if (targetUser) {
+        syncUserToFirestore(targetUser);
+      }
     }
 
     // 2. Authoritative server persistence

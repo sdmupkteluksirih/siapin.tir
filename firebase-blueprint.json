@@ -1,0 +1,86 @@
+{
+  "entities": {
+    "booking": {
+      "title": "Booking",
+      "description": "Meeting room and snack booking record for SI APIN",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "bookingNumber": { "type": "string" },
+        "meetingDate": { "type": "string" },
+        "startTime": { "type": "string" },
+        "durationHours": { "type": "number" },
+        "endTime": { "type": "string" },
+        "snackRingan": { "type": "string" },
+        "snackBerat": { "type": "string" },
+        "makanSiang": { "type": "string" },
+        "bookerName": { "type": "string" },
+        "department": { "type": "string" },
+        "whatsapp": { "type": "string" },
+        "email": { "type": "string" },
+        "meetingTitle": { "type": "string" },
+        "meetingLocation": { "type": "string" },
+        "participantCount": { "type": "number" },
+        "organizationOrGuests": { "type": "string" },
+        "notes": { "type": "string" },
+        "status": { "type": "string", "enum": ["BOOKED", "CONFIRMED", "COMPLETED", "CANCELLED"] },
+        "createdAt": { "type": "string" },
+        "createdById": { "type": "string" },
+        "createdByName": { "type": "string" },
+        "createdByDepartment": { "type": "string" },
+        "createdByRole": { "type": "string" },
+        "updatedAt": { "type": "string" },
+        "lastModifiedById": { "type": "string" },
+        "lastModifiedByName": { "type": "string" },
+        "lastModifiedByDepartment": { "type": "string" },
+        "lastModifiedByRole": { "type": "string" },
+        "lastModifiedAt": { "type": "string" },
+        "lastAction": { "type": "string" }
+      },
+      "required": ["id", "bookingNumber", "meetingDate", "startTime", "endTime", "department", "meetingLocation", "status"]
+    },
+    "user": {
+      "title": "User",
+      "description": "User account for internal PLN units and Admin",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "username": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string", "enum": ["ADMIN", "USER"] },
+        "department": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "username", "name", "role", "department"]
+    },
+    "activityLog": {
+      "title": "ActivityLog",
+      "description": "Audit log for tracking operations and modifications in SI APIN",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "action": { "type": "string" },
+        "description": { "type": "string" },
+        "bookingNumber": { "type": "string" }
+      },
+      "required": ["id", "timestamp", "action", "description"]
+    }
+  },
+  "firestore": {
+    "/bookings/{bookingId}": {
+      "schema": { "$ref": "#/entities/booking" },
+      "description": "Collection of corporate meeting bookings accessible across all devices"
+    },
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/user" },
+      "description": "Corporate user accounts for authentication and access control"
+    },
+    "/activity_logs/{logId}": {
+      "schema": { "$ref": "#/entities/activityLog" },
+      "description": "System activity logs and audit trails"
+    }
+  }
+}
